@@ -909,49 +909,46 @@ def main():
 
     st.divider()
 
-    # ── Seleção de pasta DICOM SR via filedialog ─────────────────────
-    with st.expander("📂 Carregar DICOM SR da pasta", expanded=True):
-        col_btn, col_path = st.columns([1, 3])
+    # ── Upload DICOM SR pelo navegador ───────────────────────────────
+    with st.expander("📂 Carregar DICOM SR", expanded=True):
+        uploaded = st.file_uploader(
+            "Envie um ou mais arquivos DICOM SR",
+            type=None,
+            accept_multiple_files=True,
+            help="Selecione os arquivos DICOM SR do ecocardiograma diretamente pelo navegador.",
+        )
 
-        with col_btn:
-            if st.button("📁 Selecionar pasta"):
-                import tkinter as tk
-                from tkinter import filedialog
-                root = tk.Tk()
-                root.withdraw()
-                root.wm_attributes("-topmost", True)
-                pasta_sel = filedialog.askdirectory(title="Selecione a pasta com arquivos DICOM SR")
-                root.destroy()
-                if pasta_sel:
-                    st.session_state.pasta_dicom = pasta_sel
-                    st.session_state.srs_encontrados = None  # resetar lista anterior
+        if uploaded:
+            # Filtra apenas SRs válidos lendo os bytes em memória
+            srs_validos = []
+            for f in uploaded:
+                raw_bytes = f.read()
+                try:
+                    ds_test = pydicom.dcmread(io.BytesIO(raw_bytes), force=True,
+                                              stop_before_pixels=True)
+                    modality = str(getattr(ds_test, "Modality", "")).strip().upper()
+                    sop      = str(getattr(ds_test, "SOPClassUID", ""))
+                    if modality == "SR" or sop in SR_SOP:
+                        srs_validos.append((f.name, raw_bytes))
+                except Exception:
+                    pass
 
-        pasta = st.session_state.get("pasta_dicom", "")
+            if not srs_validos:
+                st.warning("Nenhum arquivo SR válido encontrado nos arquivos enviados.")
+            else:
+                nomes = [n for n, _ in srs_validos]
+                idx = 0
+                if len(srs_validos) > 1:
+                    sel = st.selectbox("Selecione o SR para carregar:", nomes)
+                    idx = nomes.index(sel)
+                else:
+                    st.info(f"Arquivo SR detectado: **{nomes[0]}**")
 
-        with col_path:
-            st.text_input("Pasta selecionada", value=pasta,
-                          disabled=True, label_visibility="collapsed",
-                          placeholder="Nenhuma pasta selecionada")
-
-        if pasta and os.path.isdir(pasta):
-            if st.button("🔍 Buscar SRs na pasta"):
-                with st.spinner("Procurando arquivos SR..."):
-                    arquivos = []
-                    for nome in sorted(os.listdir(pasta)):
-                        caminho = os.path.join(pasta, nome)
-                        if os.path.isfile(caminho) and eh_sr(caminho):
-                            arquivos.append((nome, caminho))
-                st.session_state.srs_encontrados = arquivos
-
-            srs = st.session_state.get("srs_encontrados", [])
-            if srs:
-                nomes = [n for n, _ in srs]
-                sel = st.selectbox("Selecione o SR para carregar:", nomes)
-                path_sel = dict(srs)[sel]
+                nome_sel, bytes_sel = srs_validos[idx]
 
                 if st.button("✅ Carregar SR selecionado", type="primary"):
                     with st.spinner("Lendo DICOM SR..."):
-                        ds = pydicom.dcmread(path_sel, force=True)
+                        ds = pydicom.dcmread(io.BytesIO(bytes_sel), force=True)
                         st.session_state.paciente = info_paciente(ds)
                         raw = extrair_raw(ds)
                         mapeado = mapear_para_form(raw)
@@ -976,10 +973,8 @@ def main():
                             st.session_state.sexo = "F"
 
                     preenchidos = sum(1 for v in st.session_state.valores.values() if v)
-                    st.success(f"✅ {preenchidos} campos preenchidos a partir de {sel}")
+                    st.success(f"✅ {preenchidos} campos preenchidos a partir de {nome_sel}")
                     st.rerun()
-            elif st.session_state.get("srs_encontrados") is not None:
-                st.warning("Nenhum arquivo SR válido encontrado na pasta.")
 
     # ── Dados do Paciente ────────────────────────────────────────────
     if st.session_state.paciente:
