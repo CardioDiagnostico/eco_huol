@@ -123,6 +123,63 @@ FORMULARIO = {
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# ESTRUTURA DROPDOWNS
+# ═══════════════════════════════════════════════════════════════════════
+
+ESTRUTURA_DROPDOWNS = {
+    "VENTRÍCULO ESQUERDO": {
+        "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
+        "Geometria ventricular": ["Normal", "Remodelamento concêntrico", "Hipertrofia concêntrica", "Hipertrofia excêntrica"],
+        "Função sistólica": ["Normal", "Reduzida de grau leve", "Reduzida de grau moderado", "Reduzida de grau importante"],
+        "Função diastólica": ["Normal", "Disfunção grau I", "Disfunção grau II", "Disfunção grau III"],
+    },
+    "VENTRÍCULO DIREITO": {
+        "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
+        "Função sistólica": ["Normal", "Reduzida"],
+    },
+    "ÁTRIO ESQUERDO": {
+        "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
+    },
+    "ÁTRIO DIREITO": {
+        "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
+    },
+    "VALVA AORTA": {
+        "Geral": ["Normal", "Calcificação", "Monocúspide", "Bicúspide", "Vegetação"],
+        "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+    },
+    "VALVA MITRAL": {
+        "Geral": ["Normal", "Calcificação", "Reumática", "Mixomatosa", "Ruptura de cordoalha", "SAM", "Vegetação"],
+        "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+    },
+    "VALVA TRICÚSPIDE": {
+        "Geral": ["Normal", "Calcificação", "Carcinóide", "Vegetação"],
+        "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+    },
+    "VALVA PULMONAR": {
+        "Geral": ["Normal", "Calcificação", "Vegetação"],
+        "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+    },
+    "AORTA": {
+        "Raiz da aorta": ["Normal", "Dilatação"],
+        "Aorta ascendente": ["Normal", "Dilatação"],
+    },
+    "ARTÉRIA PULMONAR": {
+        "Tronco da pulmonar": ["Normal", "Dilatação"],
+    },
+    "PERICÁRDIO": {
+        "Geral": ["Normal", "Espessado", "Derrame pericárdico leve", "Derrame pericárdico moderado", "Derrame pericárdico importante"],
+    },
+    "CONGÊNITAS": {
+        "Geral": ["Ausente", "Comunicação interatrial (CIA)", "Comunicação interventricular (CIV)", "Persistência do canal arterial", "Forame Oval Patente (FOP)", "Transposição dos grandes vasos", "Tetralogia de Fallot", "Anomalia de Ebstein", "Coarctação da aorta", "Ventrículo único", "Comunicação atrioventricular", "Dobra epicárdica", "Anomalia de Uhl", "Miocardiopatia hipertrófica", "Miocardiopatia dilatada", "Miocardiopatia restritiva"],
+    },
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # MAPEAMENTO DICOM SR → CAMPOS DO FORMULÁRIO
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -315,7 +372,11 @@ def info_paciente(ds):
     for a,l in campos.items():
         try:
             v = getattr(ds,a,None)
-            if v: r[l] = str(v)
+            if v:
+                v = str(v).strip()
+                if a in ("PatientBirthDate", "StudyDate") and len(v) == 8 and v.isdigit():
+                    v = f"{v[6:8]}/{v[4:6]}/{v[0:4]}"
+                r[l] = v
         except: pass
     return r
 
@@ -661,80 +722,108 @@ def _ref(sexo, secao, campo_nome):
                     return c["ref_mas"] if sexo=="M" else c["ref_fem"]
     return ""
 
-def gerar_laudo(valores, sexo):
-    def av(sec, campo):
-        v = _gv(valores, sec, campo)
-        r = _ref(sexo, sec, campo)
-        ok = _dentro_ref(str(v), r) if v is not None else None
-        return v, ok
+def gerar_laudo(valores, sexo, estruturado=None):
+    if estruturado is None:
+        estruturado = {}
 
-    ddve, ddve_ok = av("CÂMARAS ESQUERDAS","DdVE")
-    erp,  erp_ok  = av("CÂMARAS ESQUERDAS","ERP")
-    massa,massa_ok = av("CÂMARAS ESQUERDAS","Massa index")
-    feve_s,_ = av("CÂMARAS ESQUERDAS","FEVE (Simpson)")
-    feve_t,_ = av("CÂMARAS ESQUERDAS","FEVE (Teichholz)")
-    feve_val = feve_s if feve_s is not None else feve_t
-    ae_vol, ae_ok   = av("CÂMARAS ESQUERDAS","AE - Vol. bipl. index")
-    ae_diam,ae_d_ok = av("CÂMARAS ESQUERDAS","AE - Diâm.")
-    _,      vd_ok   = av("CÂMARAS DIREITAS","VD - Diâm. basal")
-    ad_vol, ad_ok   = av("CÂMARAS DIREITAS","AD - Vol. index")
+    def get_est(secao, campo):
+        if (secao, campo) in estruturado:
+            return estruturado[(secao, campo)]
+        return sugerir_dropdown(secao, campo, valores, sexo)
 
-    ve_dim_txt = "Ventrículo esquerdo (VE) com dimensões aumentadas (dilatado)" if ddve_ok is False \
-                 else "Ventrículo esquerdo (VE) com dimensões normais"
+    ve_tam = get_est("VENTRÍCULO ESQUERDO", "Tamanho da cavidade")
+    ve_dim_txt = "Ventrículo esquerdo (VE) com dimensões normais" if ve_tam == "Normal" else f"Ventrículo esquerdo (VE) com {ve_tam.lower()}"
 
-    if erp is not None and massa is not None:
-        if erp >= 0.42 and massa_ok is False: geom = "Geometria ventricular: hipertrofia concêntrica"
-        elif erp >= 0.42:                     geom = "Geometria ventricular: remodelamento concêntrico"
-        elif massa_ok is False:               geom = "Geometria ventricular: hipertrofia excêntrica"
-        else:                                 geom = "Geometria ventricular: normal"
-    elif erp is not None:
-        geom = "Geometria ventricular: remodelamento concêntrico" if erp >= 0.42 else "Geometria ventricular: normal"
+    ve_geom = get_est("VENTRÍCULO ESQUERDO", "Geometria ventricular")
+    geom_txt = "Geometria ventricular: normal" if ve_geom == "Normal" else f"Geometria ventricular: {ve_geom.lower()}"
+
+    ve_fsist = get_est("VENTRÍCULO ESQUERDO", "Função sistólica")
+    feve = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Simpson)")
+    if feve is None: feve = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Teichholz)")
+    
+    if ve_fsist == "Normal":
+        fsist_txt = f"Função sistólica normal do VE (FEVE {feve:.0f}%)" if feve else "Função sistólica normal do VE"
     else:
-        geom = "Geometria ventricular: normal"
+        fsist_txt = f"Função sistólica do VE {ve_fsist.lower()} (FEVE {feve:.0f}%)" if feve else f"Função sistólica do VE {ve_fsist.lower()}"
 
-    if feve_val is not None:
-        lim = 52 if sexo=="M" else 54
-        if feve_val >= lim:    fsist = f"Função sistólica normal do VE (FEVE {feve_val:.0f}%)"
-        elif feve_val >= 40:   fsist = f"Função sistólica do VE com redução de grau leve (FEVE {feve_val:.0f}%)"
-        elif feve_val >= 30:   fsist = f"Função sistólica do VE com redução de grau moderado (FEVE {feve_val:.0f}%)"
-        else:                  fsist = f"Função sistólica do VE com redução de grau importante (FEVE {feve_val:.0f}%)"
-    else:
-        fsist = "Função sistólica do VE"
-
-    if ae_ok is False and ae_vol:
-        ae_txt = f"Átrio esquerdo (AE) com volume aumentado (índice {ae_vol:.1f} mL/m²)"
-    elif ae_d_ok is False and ae_diam:
-        ae_txt = f"Átrio esquerdo (AE) com dimensão aumentada ({ae_diam:.1f} mm)"
-    else:
+    ae_tam = get_est("ÁTRIO ESQUERDO", "Tamanho da cavidade")
+    ae_vol = _gv(valores, "CÂMARAS ESQUERDAS", "AE - Vol. bipl. index")
+    ae_diam = _gv(valores, "CÂMARAS ESQUERDAS", "AE - Diâm.")
+    
+    if ae_tam == "Normal":
         ae_txt = "Átrio esquerdo (AE) com volume normal"
+    else:
+        if ae_vol: ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()} (índice {ae_vol:.1f} mL/m²)"
+        elif ae_diam: ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()} ({ae_diam:.1f} mm)"
+        else: ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()}"
 
-    vd_txt = "Ventrículo direito (VD) com dimensões aumentadas" if vd_ok is False \
-             else "Ventrículo direito (VD) com dimensões normais"
-    ad_txt = f"Átrio direito (AD) com área e volume aumentados (índice {ad_vol:.1f} mL/m²)" \
-             if ad_ok is False and ad_vol else "Átrio direito (AD) com área e volume normais"
+    vd_tam = get_est("VENTRÍCULO DIREITO", "Tamanho da cavidade")
+    vd_txt = "Ventrículo direito (VD) com dimensões normais" if vd_tam == "Normal" else f"Ventrículo direito (VD) com {vd_tam.lower()}"
+
+    ad_tam = get_est("ÁTRIO DIREITO", "Tamanho da cavidade")
+    ad_vol = _gv(valores, "CÂMARAS DIREITAS", "AD - Vol. index")
+    if ad_tam == "Normal":
+        ad_txt = "Átrio direito (AD) com área e volume normais"
+    else:
+        if ad_vol: ad_txt = f"Átrio direito (AD) com {ad_tam.lower()} (índice {ad_vol:.1f} mL/m²)"
+        else: ad_txt = f"Átrio direito (AD) com {ad_tam.lower()}"
+
+    valvas_txt = []
+    for valva_sec, nome_valva in [("VALVA AORTA", "Valva aórtica"), ("VALVA MITRAL", "Valva mitral"), ("VALVA TRICÚSPIDE", "Valva tricúspide"), ("VALVA PULMONAR", "Valva pulmonar")]:
+        asp = get_est(valva_sec, "Geral")
+        est = get_est(valva_sec, "Estenose")
+        ins = get_est(valva_sec, "Insuficiência")
+        
+        asp_str = "com textura, mobilidade e abertura normais dos folhetos" if asp == "Normal" else f"com {asp.lower()}"
+        if asp == "Ruptura de cordoalha": asp_str = "com ruptura de cordoalha"
+        
+        refluxos = []
+        if est != "Ausente": refluxos.append(f"estenose {est.lower()}")
+        if ins != "Ausente": refluxos.append(f"insuficiência {ins.lower()}")
+        
+        ref_str = "Ausência de sinais de refluxo" if not refluxos else " | ".join(refluxos).capitalize()
+        
+        valvas_txt.append(f"{nome_valva} {asp_str} | {ref_str}")
+
+    ao_raiz = get_est("AORTA", "Raiz da aorta")
+    ao_asc = get_est("AORTA", "Aorta ascendente")
+    ap_tronco = get_est("ARTÉRIA PULMONAR", "Tronco da pulmonar")
+    
+    ao_txt = "Aorta ascendente com calibre normal | Paredes com textura normal | Fluxo normal"
+    if ao_raiz != "Normal" or ao_asc != "Normal":
+        ao_txt = f"Aorta com alterações (Raiz: {ao_raiz.lower()}, Ascendente: {ao_asc.lower()})"
+        
+    ap_txt = "Artéria Pulmonar com calibre normal | Fluxo normal"
+    if ap_tronco != "Normal":
+        ap_txt = f"Artéria Pulmonar com {ap_tronco.lower()}"
+        
+    congenita = get_est("CONGÊNITAS", "Geral")
+    cong_txt = "Situs solitus, levocardia | Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial | Septos íntegros | Canal arterial não visualizado"
+    if congenita != "Ausente":
+        cong_txt = f"Presença de {congenita}"
 
     return [
         "**CÂMARAS ESQUERDAS**",
-        ve_dim_txt, geom,
-        "Espessamento sistólico normal em todos os segmentos do VE", fsist, "",
+        ve_dim_txt, geom_txt,
+        "Espessamento sistólico normal em todos os segmentos do VE", fsist_txt, "",
         ae_txt, "",
         "**CÂMARAS DIREITAS**", vd_txt, "", ad_txt, "",
         "**VALVAS CARDÍACAS**",
-        "Valva aórtica com textura, mobilidade e abertura normais dos folhetos | Ausência de sinais de refluxo",
-        "Valva mitral com textura, mobilidade e abertura normais dos folhetos | Ausência de sinais de refluxo",
-        "Valva tricúspide com textura, mobilidade e abertura normais dos folhetos | Ausência de sinais de refluxo",
-        "Valva pulmonar com textura, mobilidade e abertura normais dos folhetos | Ausência de sinais de refluxo", "",
+        valvas_txt[0],
+        valvas_txt[1],
+        valvas_txt[2],
+        valvas_txt[3], "",
         "**VASOS DA BASE**",
-        "Aorta ascendente com calibre normal | Paredes com textura normal | Fluxo normal",
-        "Artéria Pulmonar com calibre normal | Fluxo normal", "",
-        "**PERICÁRDICO**", "Textura e deslizamento normais do pericárdico", "",
+        ao_txt,
+        ap_txt, "",
+        "**PERICÁRDIO**", "Textura e deslizamento normais do pericárdio", "",
         "**CONGÊNITAS**",
-        "Situs solitus, levocardia | Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial | Septos íntegros | Canal arterial não visualizado", "",
+        cong_txt, "",
         "**CONCLUSÃO**",
-        "- Câmaras cardíacas com dimensões normais",
-        "- Funções sistólica e diastólica biventricular normais",
-        "- Valvas cardíacas com aspectos morfofuncionais normais",
-        "- Ecodopplercardiograma transtorácico normal",
+        "- Câmaras cardíacas com dimensões normais" if ve_tam == "Normal" and vd_tam == "Normal" and ae_tam == "Normal" and ad_tam == "Normal" else "- Alterações cavitárias descritas acima",
+        "- Funções sistólica e diastólica biventricular normais" if ve_fsist == "Normal" else "- Disfunção sistólica/diastólica descrita acima",
+        "- Valvas cardíacas com aspectos morfofuncionais normais" if all(get_est(v, "Geral") == "Normal" for v in ["VALVA AORTA", "VALVA MITRAL", "VALVA TRICÚSPIDE", "VALVA PULMONAR"]) else "- Alterações valvares descritas acima",
+        "- Ecodopplercardiograma transtorácico normal" if ve_tam == "Normal" and vd_tam == "Normal" and ae_tam == "Normal" and ad_tam == "Normal" and ve_fsist == "Normal" and ve_geom == "Normal" else "- Ecodopplercardiograma transtorácico com alterações",
     ]
 
 
@@ -742,7 +831,38 @@ def gerar_laudo(valores, sexo):
 # EXPORTAÇÃO
 # ═══════════════════════════════════════════════════════════════════════
 
-def exportar_csv_bytes(paciente, valores, sexo):
+def gerar_tabela_txt(valores, sexo):
+    W_MEDIDA=34; W_VALOR=8; W_UNIDADE=8; W_REF=20
+    TOTAL=W_MEDIDA+W_VALOR+W_UNIDADE+W_REF+7
+    SEP_H="="*TOTAL; SEP_L="-"*TOTAL
+
+    def fmt(medida,valor,unidade,ref):
+        return f"  {str(medida)[:W_MEDIDA].ljust(W_MEDIDA)} | {str(valor)[:W_VALOR].rjust(W_VALOR)} | {str(unidade)[:W_UNIDADE].ljust(W_UNIDADE)} | {str(ref)[:W_REF].ljust(W_REF)}"
+
+    linhas = []
+    linhas.append(SEP_H)
+    linhas.append(fmt("MEDIDA","VALOR","UNIDADE","REFERência".upper()))
+    linhas.append(SEP_H)
+
+    secoes = {}
+    for secao,campos in FORMULARIO.items():
+        for campo in campos:
+            val = str(valores.get((secao,campo["name"]),"")).strip()
+            if val and val!="-":
+                ref = campo["ref_mas"] if sexo=="M" else campo["ref_fem"]
+                secoes.setdefault(secao,[]).append((campo["name"],val,campo["unit"],ref))
+
+    for secao,itens in secoes.items():
+        linhas.append("")
+        linhas.append(SEP_L)
+        linhas.append(f"  {secao}")
+        linhas.append(SEP_L)
+        for nome,val,unit,ref in itens:
+            linhas.append(fmt(nome,val,unit,ref or "-"))
+
+    return "\n".join(linhas)
+
+def exportar_csv_bytes(paciente, valores, sexo, estruturado):
     W_MEDIDA=34; W_VALOR=8; W_UNIDADE=8; W_REF=20
     TOTAL=W_MEDIDA+W_VALOR+W_UNIDADE+W_REF+7
     SEP_H="="*TOTAL; SEP_L="-"*TOTAL
@@ -756,23 +876,11 @@ def exportar_csv_bytes(paciente, valores, sexo):
     w(SEP_H); w("  ECOCARDIOGRAMA - Banco de Dados de Pesquisa"); w(SEP_H)
     for k,v in paciente.items(): w(fmt(k,v,"-","-"))
     w(SEP_L); w()
-    w(SEP_H); w(fmt("MEDIDA","VALOR","UNIDADE","REFERÊNCIA")); w(SEP_H)
-
-    secoes = {}
-    for secao,campos in FORMULARIO.items():
-        for campo in campos:
-            val = str(valores.get((secao,campo["name"]),"")).strip()
-            if val and val!="-":
-                ref = campo["ref_mas"] if sexo=="M" else campo["ref_fem"]
-                secoes.setdefault(secao,[]).append((campo["name"],val,campo["unit"],ref))
-
-    for secao,itens in secoes.items():
-        w(); w(SEP_L); w(f"  {secao}"); w(SEP_L)
-        for nome,val,unit,ref in itens:
-            w(fmt(nome,val,unit,ref or "-"))
+    
+    w(gerar_tabela_txt(valores, sexo))
 
     w(); w(SEP_H); w(); w(SEP_H); w("  LAUDO DESCRITIVO"); w(SEP_H); w()
-    for linha in gerar_laudo(valores, sexo):
+    for linha in gerar_laudo(valores, sexo, estruturado):
         linha_limpa = linha.replace("**","")
         w(f"  {linha_limpa}")
     w(); w(SEP_H)
@@ -870,6 +978,126 @@ def _init_state():
 # ═══════════════════════════════════════════════════════════════════════
 # INTERFACE STREAMLIT
 # ═══════════════════════════════════════════════════════════════════════
+
+def sugerir_dropdown(secao, nome, valores, sexo):
+    def av(sec, campo):
+        v = _gv(valores, sec, campo)
+        r = _ref(sexo, sec, campo)
+        ok = _dentro_ref(str(v), r) if v is not None else None
+        return v, ok
+
+    if secao == "VENTRÍCULO ESQUERDO":
+        if nome == "Tamanho da cavidade":
+            ddve, ok = av("CÂMARAS ESQUERDAS", "DdVE")
+            if ddve is None or ok is True: return "Normal"
+            if sexo == "M":
+                if ddve <= 63: return "Dilatação leve"
+                elif ddve <= 68: return "Dilatação moderada"
+                else: return "Dilatação importante"
+            else:
+                if ddve <= 56: return "Dilatação leve"
+                elif ddve <= 60: return "Dilatação moderada"
+                else: return "Dilatação importante"
+                
+        elif nome == "Geometria ventricular":
+            erp, _ = av("CÂMARAS ESQUERDAS", "ERP")
+            massa, ok = av("CÂMARAS ESQUERDAS", "Massa index")
+            if erp is not None and massa is not None:
+                if erp >= 0.42 and ok is False: return "Hipertrofia concêntrica"
+                elif erp >= 0.42: return "Remodelamento concêntrico"
+                elif ok is False: return "Hipertrofia excêntrica"
+                else: return "Normal"
+            elif erp is not None:
+                return "Remodelamento concêntrico" if erp >= 0.42 else "Normal"
+            return "Normal"
+            
+        elif nome == "Função sistólica":
+            fe = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Simpson)")
+            if fe is None: fe = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Teichholz)")
+            if fe is None: return "Normal"
+            lim = 52 if sexo == "M" else 54
+            if fe >= lim: return "Normal"
+            elif fe >= 41: return "Reduzida de grau leve"
+            elif fe >= 30: return "Reduzida de grau moderado"
+            else: return "Reduzida de grau importante"
+            
+    elif secao == "VENTRÍCULO DIREITO":
+        if nome == "Tamanho da cavidade":
+            vd, ok = av("CÂMARAS DIREITAS", "VD - Diâm. basal")
+            if vd is None or ok is True: return "Normal"
+            if vd <= 45: return "Dilatação leve"
+            elif vd <= 50: return "Dilatação moderada"
+            else: return "Dilatação importante"
+        elif nome == "Função sistólica":
+            tapse, _ = av("CÂMARAS DIREITAS", "VD - TAPSE")
+            onda_s, _ = av("CÂMARAS DIREITAS", "VD - Onda S")
+            fac, _ = av("CÂMARAS DIREITAS", "VD - FAC")
+            if (tapse is not None and tapse < 17) or (onda_s is not None and onda_s < 9.5) or (fac is not None and fac < 35):
+                return "Reduzida"
+            return "Normal"
+
+    elif secao == "ÁTRIO ESQUERDO":
+        if nome == "Tamanho da cavidade":
+            vol, _ = av("CÂMARAS ESQUERDAS", "AE - Vol. bipl. index")
+            if vol is not None:
+                if vol <= 34: return "Normal"
+                elif vol <= 41: return "Dilatação leve"
+                elif vol <= 48: return "Dilatação moderada"
+                else: return "Dilatação importante"
+            diam, _ = av("CÂMARAS ESQUERDAS", "AE - Diâm.")
+            if diam is not None:
+                if sexo == "M":
+                    if diam <= 40: return "Normal"
+                    elif diam <= 46: return "Dilatação leve"
+                    elif diam <= 52: return "Dilatação moderada"
+                    else: return "Dilatação importante"
+                else:
+                    if diam <= 38: return "Normal"
+                    elif diam <= 42: return "Dilatação leve"
+                    elif diam <= 46: return "Dilatação moderada"
+                    else: return "Dilatação importante"
+            return "Normal"
+            
+    elif secao == "ÁTRIO DIREITO":
+        if nome == "Tamanho da cavidade":
+            vol, _ = av("CÂMARAS DIREITAS", "AD - Vol. index")
+            if vol is not None:
+                lim = 32 if sexo == "M" else 27
+                if vol <= lim: return "Normal"
+                elif vol <= lim + 6: return "Dilatação leve"
+                else: return "Dilatação importante"
+            area, _ = av("CÂMARAS DIREITAS", "AD - Área")
+            if area is not None:
+                if area <= 18: return "Normal"
+                else: return "Dilatação leve"
+            return "Normal"
+            
+    elif secao == "AORTA":
+        if nome == "Raiz da aorta":
+            raiz, ok = av("CÂMARAS ESQUERDAS", "Seio aórtico")
+            if raiz is not None and ok is False: return "Dilatação"
+            return "Normal"
+        elif nome == "Aorta ascendente":
+            asc, ok = av("CÂMARAS ESQUERDAS", "Aorta ascend.")
+            if asc is not None and ok is False: return "Dilatação"
+            return "Normal"
+            
+    elif secao == "ARTÉRIA PULMONAR":
+        if nome == "Tronco da pulmonar":
+            ap, _ = av("TRICÚSPIDE / PULMONAR", "AP - Diâm.")
+            if ap is not None and ap > 25: return "Dilatação"
+            return "Normal"
+
+    # Padrões genéricos
+    if nome in ["Geral", "Tamanho da cavidade", "Geometria ventricular", "Função sistólica", "Função diastólica", "Raiz da aorta", "Aorta ascendente", "Tronco da pulmonar"]:
+        return "Normal"
+    if nome in ["Estenose", "Insuficiência"]:
+        return "Ausente"
+    if secao == "CONGÊNITAS":
+        return "Ausente"
+
+    return "Normal"
+
 
 def main():
     st.set_page_config(
@@ -976,14 +1204,6 @@ def main():
                     st.success(f"✅ {preenchidos} campos preenchidos a partir de {nome_sel}")
                     st.rerun()
 
-    # ── Dados do Paciente ────────────────────────────────────────────
-    if st.session_state.paciente:
-        pac = st.session_state.paciente
-        cols = st.columns(len(pac))
-        for col, (k,v) in zip(cols, pac.items()):
-            col.metric(k, v)
-        st.divider()
-
     # ── Recalcula fórmulas a partir dos valores atuais ───────────────
     # Converte strings → floats para as fontes, aplica fórmulas
     valores_str = st.session_state.valores   # {(sec,campo): str}
@@ -1012,73 +1232,140 @@ def main():
         if wkey not in st.session_state:
             st.session_state[wkey] = val
 
-    # ── Formulário por seções ────────────────────────────────────────
-    st.subheader("📋 Formulário de Medidas")
+    # ── Coleta de estado do Estruturado ───────────────────────────────
+    estruturado_atual = {}
+    sexo_atual = st.session_state.sexo
+    for secao, itens in ESTRUTURA_DROPDOWNS.items():
+        for nome in itens:
+            key = f"estr_{secao}_{nome}"
+            sug_key = f"sug_{secao}_{nome}"
+            
+            nova_sugestao = sugerir_dropdown(secao, nome, valores_exibir, sexo_atual)
+            sug_anterior = st.session_state.get(sug_key)
+            
+            # Se a sugestão baseada nas fórmulas mudou, atualiza o widget à força
+            if nova_sugestao != sug_anterior:
+                st.session_state[key] = nova_sugestao
+                st.session_state[sug_key] = nova_sugestao
+                
+            val = st.session_state.get(key)
+            if not val: # Fallback de segurança
+                val = nova_sugestao
+                st.session_state[key] = val
+                
+            estruturado_atual[(secao, nome)] = val
 
-    sexo = st.session_state.sexo
-    valores_editados = {}
+    # ── Tabs principais ───────────────────────────────────────────────
+    tab_paciente, tab_medidas, tab_estruturado, tab_laudo = st.tabs(["Dados do Paciente", "Medidas", "Estruturado", "Laudo"])
 
-    for secao, campos in FORMULARIO.items():
-        st.markdown(f'<div class="sec-header">{secao}</div>', unsafe_allow_html=True)
+    with tab_paciente:
+        # ── Dados do Paciente ────────────────────────────────────────────
+        st.subheader("👤 Dados do Paciente")
+        if st.session_state.paciente:
+            pac = st.session_state.paciente
+            for k,v in pac.items():
+                novo_v = st.text_input(k, value=v, key=f"pac_{k}")
+                if novo_v != v:
+                    st.session_state.paciente[k] = novo_v
+        else:
+            st.info("Nenhum dado de paciente carregado.")
 
-        # Cabeçalho das colunas
-        h1,h2,h3,h4,h5 = st.columns([3,1.2,0.7,1.8,0.3])
-        h1.markdown("**Medida**"); h2.markdown("**Valor**")
-        h3.markdown("**Un.**");   h4.markdown("**Referência**")
+    with tab_medidas:
+        # ── Formulário por seções ────────────────────────────────────────
+        st.subheader("📋 Formulário de Medidas")
 
-        for campo in campos:
-            key = (secao, campo["name"])
-            wkey = f"inp_{secao}_{campo['name']}"
-            ref = campo["ref_mas"] if sexo=="M" else campo["ref_fem"]
-            is_calc = campo["calc"]
+        sexo = st.session_state.sexo
+        valores_editados = {}
 
-            # Atualiza o widget com valor calculado se não há entrada manual
-            val_calc = valores_calc.get(key, "")
-            val_manual = valores_str.get(key, "")
-            val_widget = st.session_state.get(wkey, "")
+        for secao, campos in FORMULARIO.items():
+            st.markdown(f'<div class="sec-header">{secao}</div>', unsafe_allow_html=True)
 
-            # Se calculado mudou e o usuário não digitou nada diferente, atualiza
-            if val_calc and val_widget == val_manual and val_widget != val_calc:
-                st.session_state[wkey] = val_calc
+            # Cabeçalho das colunas
+            h1,h2,h3,h4,h5 = st.columns([3,1.2,0.7,1.8,0.3])
+            h1.markdown("**Medida**"); h2.markdown("**Valor**")
+            h3.markdown("**Un.**");   h4.markdown("**Referência**")
 
-            val_exibir = valores_exibir.get(key, "")
+            for campo in campos:
+                key = (secao, campo["name"])
+                wkey = f"inp_{secao}_{campo['name']}"
+                ref = campo["ref_mas"] if sexo=="M" else campo["ref_fem"]
+                is_calc = campo["calc"]
 
-            c1,c2,c3,c4,c5 = st.columns([3,1.2,0.7,1.8,0.3])
+                # Atualiza o widget com valor calculado se não há entrada manual
+                val_calc = valores_calc.get(key, "")
+                val_manual = valores_str.get(key, "")
+                val_widget = st.session_state.get(wkey, "")
 
-            with c1:
-                label = campo["name"]
-                if is_calc:
-                    st.markdown(f'<span class="calc-label">⚙ {label}</span>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<span style='font-size:13px'>{label}</span>", unsafe_allow_html=True)
+                # Se calculado mudou e o usuário não digitou nada diferente, atualiza
+                if val_calc and val_widget == val_manual and val_widget != val_calc:
+                    st.session_state[wkey] = val_calc
 
-            with c2:
-                novo_val = st.text_input(
-                    label=campo["name"],
-                    key=wkey,
-                    label_visibility="collapsed",
-                )
-                valores_editados[key] = novo_val
+                val_exibir = valores_exibir.get(key, "")
 
-            with c3:
-                st.markdown(f"<span style='color:#6c7086;font-size:12px'>{campo['unit']}</span>",
-                            unsafe_allow_html=True)
+                c1,c2,c3,c4,c5 = st.columns([3,1.2,0.7,1.8,0.3])
 
-            with c4:
-                dentro = _dentro_ref(val_exibir, ref) if val_exibir else None
-                if dentro is True:
-                    st.markdown(f'<span class="ref-ok">✓ {ref}</span>', unsafe_allow_html=True)
-                elif dentro is False:
-                    st.markdown(f'<span class="ref-bad">⚠ {ref}</span>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<span class="ref-neu">{ref}</span>', unsafe_allow_html=True)
+                with c1:
+                    label = campo["name"]
+                    if is_calc:
+                        st.markdown(f'<span class="calc-label">⚙ {label}</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<span style='font-size:13px'>{label}</span>", unsafe_allow_html=True)
 
-            with c5:
-                if is_calc:
-                    st.markdown('<span class="calc-label">⚙</span>', unsafe_allow_html=True)
+                with c2:
+                    novo_val = st.text_input(
+                        label=campo["name"],
+                        key=wkey,
+                        label_visibility="collapsed",
+                    )
+                    valores_editados[key] = novo_val
 
-    # Persiste edições manuais e recalcula
-    st.session_state.valores = recalcular(valores_editados)
+                with c3:
+                    st.markdown(f"<span style='color:#6c7086;font-size:12px'>{campo['unit']}</span>",
+                                unsafe_allow_html=True)
+
+                with c4:
+                    dentro = _dentro_ref(val_exibir, ref) if val_exibir else None
+                    if dentro is True:
+                        st.markdown(f'<span class="ref-ok">✓ {ref}</span>', unsafe_allow_html=True)
+                    elif dentro is False:
+                        st.markdown(f'<span class="ref-bad">⚠ {ref}</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<span class="ref-neu">{ref}</span>', unsafe_allow_html=True)
+
+                with c5:
+                    if is_calc:
+                        st.markdown('<span class="calc-label">⚙</span>', unsafe_allow_html=True)
+
+        # Persiste edições manuais e recalcula
+        st.session_state.valores = recalcular(valores_editados)
+
+    with tab_estruturado:
+        st.subheader("📋 Estruturado")
+        for secao, itens in ESTRUTURA_DROPDOWNS.items():
+            st.markdown(f'<div class="sec-header">{secao}</div>', unsafe_allow_html=True)
+            for nome, opcoes in itens.items():
+                st.selectbox(nome, opcoes, key=f"estr_{secao}_{nome}")
+
+    with tab_laudo:
+        st.subheader("📝 Laudo Descritivo")
+        tem_dados = any(v for v in st.session_state.valores.values())
+        if not tem_dados:
+            st.info("Nenhuma medida preenchida.")
+        else:
+            tabela_str = gerar_tabela_txt(valores_exibir, sexo)
+            linhas_laudo = gerar_laudo(valores_exibir, sexo, estruturado_atual)
+            texto_laudo = "\n".join(l.replace("**","") for l in linhas_laudo)
+            
+            conteudo_completo = tabela_str + "\n\n" + "="*75 + "\n  LAUDO DESCRITIVO\n" + "="*75 + "\n\n" + texto_laudo
+            
+            st.text_area("Laudo com Tabela (editável)", value=conteudo_completo, height=600, key="laudo_texto")
+            
+            laudo_bytes = conteudo_completo.encode("utf-8")
+            nome_pac = st.session_state.paciente.get("Nome","paciente").replace(" ","_").replace("/","-")
+            st.download_button("📄 Baixar Laudo (.txt)",
+                               data=laudo_bytes,
+                               file_name=f"laudo_{nome_pac}.txt",
+                               mime="text/plain")
 
     st.divider()
 
@@ -1089,11 +1376,9 @@ def main():
     pac = st.session_state.paciente
     nome_pac = pac.get("Nome","paciente").replace(" ","_").replace("/","-")
 
-    tem_dados = any(v for v in st.session_state.valores.values())
-
     with col_csv:
         if tem_dados:
-            csv_bytes = exportar_csv_bytes(pac, valores_exibir, sexo)
+            csv_bytes = exportar_csv_bytes(pac, valores_exibir, sexo, estruturado_atual)
             st.download_button(
                 "📄 Baixar CSV",
                 data=csv_bytes,
@@ -1122,20 +1407,6 @@ def main():
             st.session_state.valores = {}
             st.session_state.paciente = {}
             st.rerun()
-
-    # ── Laudo Descritivo ─────────────────────────────────────────────
-    if tem_dados:
-        st.divider()
-        with st.expander("📝 Laudo Descritivo", expanded=False):
-            linhas = gerar_laudo(valores_exibir, sexo)
-            texto_laudo = "\n".join(l.replace("**","") for l in linhas)
-            st.text_area("Laudo (editável)", value=texto_laudo, height=420,
-                         key="laudo_texto")
-            laudo_bytes = texto_laudo.encode("utf-8")
-            st.download_button("📄 Baixar Laudo (.txt)",
-                               data=laudo_bytes,
-                               file_name=f"laudo_{nome_pac}.txt",
-                               mime="text/plain")
 
 
 if __name__ == "__main__":
