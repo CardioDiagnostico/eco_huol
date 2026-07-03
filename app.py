@@ -994,6 +994,20 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
     med_campos = [(sec, c["name"]) for sec, campos in FORMULARIO.items() for c in campos]
     est_campos = [(sec, nome) for sec, itens in ESTRUTURA_DROPDOWNS.items() for nome in itens]
 
+    # Estilos específicos para Wall Motion no Banco de Dados
+    WM_FILL  = PatternFill("solid", fgColor="7B3F00")   # marrom escuro — cabeçalho WM
+    WM_FONT  = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
+    WM_D_FILL= PatternFill("solid", fgColor="FFF3E0")   # laranja claro — dados WM
+
+    # Nomes dos 17 segmentos para o Banco de Dados
+    NOMES_SEG_BD = [
+        '', 'Ant basal','Ant-sep basal','Sep basal',
+        'Inf basal','Inf-lat basal','Ant-lat basal',
+        'Ant med','Ant-sep med','Sep med',
+        'Inf med','Inf-lat med','Ant-lat med',
+        'Ant apex','Sep apex','Inf apex','Lat apex','Apex',
+    ]
+
     # Cabeçalhos
     col = 1
     for k in info_keys:
@@ -1011,6 +1025,17 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
         cell.font = E_FONT; cell.fill = E_FILL; cell.alignment = CTR; cell.border = BRD
         ws2.column_dimensions[get_column_letter(col)].width = 18
         col += 1
+    # Cabeçalho WMSI
+    cell = ws2.cell(row=1, column=col, value="WMSI\n(Wall Motion)")
+    cell.font = WM_FONT; cell.fill = WM_FILL; cell.alignment = CTR; cell.border = BRD
+    ws2.column_dimensions[get_column_letter(col)].width = 12
+    col += 1
+    # Cabeçalhos dos 17 segmentos
+    for seg in range(1, 18):
+        cell = ws2.cell(row=1, column=col, value=f"{NOMES_SEG_BD[seg]}\n(WM seg {seg})")
+        cell.font = WM_FONT; cell.fill = WM_FILL; cell.alignment = CTR; cell.border = BRD
+        ws2.column_dimensions[get_column_letter(col)].width = 14
+        col += 1
 
     # Dados
     col = 1
@@ -1022,6 +1047,17 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
         col += 1
     for sec, nome in est_campos:
         ws2.cell(row=2, column=col, value=str(estruturado.get((sec, nome), ""))).font = D_FONT
+        col += 1
+    # Dados Wall Motion — WMSI
+    sc_bd = {int(k): int(v) for k, v in (wmsi_scores or {str(i): 1 for i in range(1, 18)}).items()}
+    wmsi_bd = round(sum(sc_bd.values()) / 17, 2)
+    cell = ws2.cell(row=2, column=col, value=wmsi_bd)
+    cell.font = D_FONT; cell.fill = WM_D_FILL; cell.alignment = CTR; cell.border = BRD
+    col += 1
+    # Dados Wall Motion — 17 segmentos
+    for seg in range(1, 18):
+        cell = ws2.cell(row=2, column=col, value=sc_bd.get(seg, 1))
+        cell.font = D_FONT; cell.fill = WM_D_FILL; cell.alignment = CTR; cell.border = BRD
         col += 1
 
     ws2.row_dimensions[1].height = 36
