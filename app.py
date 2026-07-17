@@ -91,6 +91,7 @@ FORMULARIO = {
         {"name": "AVAo (EC-Vmax)", "unit": "cm²",   "ref_mas": "",        "ref_fem": "",        "calc": True},
         {"name": "AVAo index",     "unit": "cm²/m²","ref_mas": "",        "ref_fem": "",        "calc": True},
         {"name": "Vel. Ratio",     "unit": "",      "ref_mas": "> 0,25",  "ref_fem": "> 0,25",  "calc": True},
+        {"name": "Vel. máx. Ao",   "unit": "m/s",   "ref_mas": "< 2,0",   "ref_fem": "< 2,0",   "calc": False},
         {"name": "Grad. máx.",     "unit": "mmHg",  "ref_mas": "< 20",    "ref_fem": "< 20",    "calc": False},
         {"name": "Grad. méd.",     "unit": "mmHg",  "ref_mas": "< 10",    "ref_fem": "< 10",    "calc": False},
         {"name": "Decel. Slope",   "unit": "mm/s²", "ref_mas": "",        "ref_fem": "",        "calc": False},
@@ -99,7 +100,6 @@ FORMULARIO = {
     "TRICÚSPIDE / PULMONAR": [
         {"name": "Vel. RT",    "unit": "m/s",  "ref_mas": "",      "ref_fem": "",      "calc": False},
         {"name": "PSAP",       "unit": "mmHg", "ref_mas": "<= 35", "ref_fem": "<= 35", "calc": False},
-        {"name": "TAPSE",      "unit": "mm",   "ref_mas": ">= 17", "ref_fem": ">= 17", "calc": False},
         {"name": "AP - Diâm.", "unit": "mm",   "ref_mas": "",      "ref_fem": "",      "calc": False},
         {"name": "VTI AP",     "unit": "cm",   "ref_mas": "",      "ref_fem": "",      "calc": False},
     ],
@@ -112,6 +112,10 @@ FORMULARIO = {
         {"name": "Vel. a' septal",    "unit": "cm/s", "ref_mas": "",      "ref_fem": "",      "calc": False},
         {"name": "Vel. a' lateral",   "unit": "cm/s", "ref_mas": "",      "ref_fem": "",      "calc": False},
         {"name": "E/A tecidual",      "unit": "",     "ref_mas": "",      "ref_fem": "",      "calc": True},
+        {"name": "VP sistólica",       "unit": "m/s",  "ref_mas": "",      "ref_fem": "",      "calc": False},
+        {"name": "VP diastólica",      "unit": "m/s",  "ref_mas": "",      "ref_fem": "",      "calc": False},
+        {"name": "VP S/D",             "unit": "",     "ref_mas": "",      "ref_fem": "",      "calc": False},
+        {"name": "TRIV",               "unit": "ms",   "ref_mas": "",      "ref_fem": "",      "calc": False},
     ],
     "STRAIN": [
         {"name": "VE - SLG",  "unit": "%", "ref_mas": "", "ref_fem": "", "calc": False},
@@ -132,7 +136,7 @@ ESTRUTURA_DROPDOWNS = {
         "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
         "Geometria ventricular": ["Normal", "Remodelamento concêntrico", "Hipertrofia concêntrica", "Hipertrofia excêntrica"],
         "Função sistólica": ["Normal", "Reduzida de grau leve", "Reduzida de grau moderado", "Reduzida de grau importante"],
-        "Função diastólica": ["Normal", "Disfunção grau I", "Disfunção grau II", "Disfunção grau III"],
+        "Função diastólica": ["Normal", "Disfunção diastólica grau I", "Disfunção diastólica grau II", "Disfunção diastólica grau III", "Função diastólica não avaliada"],
     },
     "VENTRÍCULO DIREITO": {
         "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
@@ -147,22 +151,22 @@ ESTRUTURA_DROPDOWNS = {
     "VALVA AORTA": {
         "Geral": ["Normal", "Calcificação", "Monocúspide", "Bicúspide", "Vegetação"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
     },
     "VALVA MITRAL": {
         "Geral": ["Normal", "Calcificação", "Reumática", "Mixomatosa", "Ruptura de cordoalha", "SAM", "Vegetação"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
     },
     "VALVA TRICÚSPIDE": {
         "Geral": ["Normal", "Calcificação", "Carcinóide", "Vegetação"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
     },
     "VALVA PULMONAR": {
         "Geral": ["Normal", "Calcificação", "Vegetação"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Insuficiência": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
     },
     "AORTA": {
         "Raiz da aorta": ["Normal", "Dilatação"],
@@ -222,8 +226,7 @@ MAPA_DICOM = {
     "Right Atrium Systolic Pressure": [("CÂMARAS DIREITAS", "AD - PSAP", _plain)],
     "Right Ventricle Basal Diameter": [("CÂMARAS DIREITAS", "VD - Diâm. basal", _mm)],
     "Tricuspid Annular Plane Systolic Excursion": [
-        ("CÂMARAS DIREITAS",       "VD - TAPSE", _mm),
-        ("TRICÚSPIDE / PULMONAR",  "TAPSE",      _mm)],
+        ("CÂMARAS DIREITAS", "VD - TAPSE", _mm)],
     "Right Ventricle S Velocity": [("CÂMARAS DIREITAS", "VD - Onda S",
         lambda v: round(v/10,1) if v > 10 else round(v,1))],
     "Right Ventricular Peak Systolic Pressure": [("CÂMARAS DIREITAS", "VD - PSAP", _plain)],
@@ -237,7 +240,7 @@ MAPA_DICOM = {
         lambda v: round(v/1000,2) if v > 10 else round(v,2))],
     "Mitral Valve E to A Ratio": [("VALVA MITRAL", "Relação E/A", _plain)],
     "Deceleration Time": [("VALVA MITRAL", "Decel. Time", _plain)],
-    "Pressure Half-Time": [("VALVA MITRAL", "PHT", _plain)],
+    "Pressure Half-Time": [("AORTA / VSVE", "_pht_ctx", None)],
     "Area by Pressure Half-Time": [("VALVA MITRAL", "Área (PHT)",
         lambda v: round(v/100,2) if v > 10 else round(v,2))],
     "Mitral Valve Flow Area": [("VALVA MITRAL", "Área (PISA)",
@@ -260,10 +263,9 @@ MAPA_DICOM = {
         lambda v: round(v/100,2) if v > 10 else round(v,2))],
     "Aortic Valve Area Indexed To BSA": [("AORTA / VSVE", "AVAo index", _plain)],
     "Aortic Valve Velocity Ratio": [("AORTA / VSVE", "Vel. Ratio", _plain)],
-    "Cardiovascular Orifice Area": [("AORTA / VSVE", "AVAo (EC-VTI)",
-        lambda v: round(v/100,2) if v > 10 else round(v,2))],
-    "Deceleration Slope": [("AORTA / VSVE", "Decel. Slope", _plain)],
-    "Pressure Half-Time Peak velocity": [("AORTA / VSVE", "PHT Ao", _plain)],
+    "Cardiovascular Orifice Area": [("AORTA / VSVE", "_avao_ctx", None)],
+    "Deceleration Slope": [("AORTA / VSVE", "_slope_ctx", None)],
+    # PHT Ao extraído via _pht_ctx handler acima
 
     "Left Ventricular Peak Early Diastolic Tissue Velocity": [("TDI", "_e_prime_raw", None)],
     "LV Peak Diastolic Tissue Velocity During Atrial Systole": [("TDI", "_a_prime_raw", None)],
@@ -272,6 +274,14 @@ MAPA_DICOM = {
     "Mean Myocardial Velocity of E' sep and E' lat": [("TDI", "E/e' MÉDIO",
         lambda v: round(v/10,1) if v > 10 else round(v,1))],
     "Left Ventricle E to A Tissue Velocity Ratio": [("TDI", "E/A tecidual", _plain)],
+
+    "Pulmonary Vein Systolic Peak Velocity":    [("TDI", "VP sistólica",
+        lambda v: round(v/1000, 2) if v > 10 else round(v, 2))],
+    "Pulmonary Vein Diastolic Peak Velocity":   [("TDI", "VP diastólica",
+        lambda v: round(v/1000, 2) if v > 10 else round(v, 2))],
+    "Pulmonary Vein Systolic to Diastolic Ratio": [("TDI", "VP S/D", _plain)],
+    "Left Ventricular Isovolumic Relaxation Time": [("TDI", "TRIV",
+        lambda v: round(v, 1))],
 }
 
 MEDIDAS_OCULTAS = {
@@ -358,8 +368,8 @@ def extrair_raw(ds, out=None, ctx="", site_herdado=""):
     return out
 
 def info_paciente(ds):
-    campos = {"PatientName":"Nome","PatientID":"ID","PatientSex":"Sexo",
-              "PatientBirthDate":"Nascimento","StudyDate":"Data do Exame",
+    campos = {"PatientName":"Nome","PatientID":"ID","AccessionNumber":"Accession",
+              "PatientSex":"Sexo","PatientBirthDate":"Nascimento","StudyDate":"Data do Exame",
               "InstitutionName":"Instituição","StudyDescription":"Descrição"}
     r = {}
     for a,l in campos.items():
@@ -419,17 +429,60 @@ def mapear_para_form(medidas_raw):
                 elif len(vals_float)==1:
                     resultado[("TDI","Rel. E/E' septal")] = round(vals_float[0],1)
                 continue
+            if campo == "_slope_ctx":
+                # Deceleration Slope: pega apenas de Aortic Valve
+                for it in itens:
+                    site = it["site"]; v = it["valor"]
+                    if _ctx_tem(site,"aortic"):
+                        resultado[("AORTA / VSVE","Decel. Slope")] = round(v,1)
+                        break  # um valor é suficiente
+                continue
+            if campo == "_pht_ctx":
+                # Pressure Half-Time: Aortic Valve → PHT Ao; Mitral → PHT
+                # Para mitral: valores muito baixos (<100ms) são de regurgitação, ignorar
+                for it in itens:
+                    site = it["site"]; v = it["valor"]
+                    if _ctx_tem(site,"aortic"):
+                        # PHT aórtico: usar o maior (insuficiência)
+                        atual = resultado.get(("AORTA / VSVE","PHT Ao"), 0)
+                        if v > atual:
+                            resultado[("AORTA / VSVE","PHT Ao")] = round(v,1)
+                    elif _ctx_tem(site,"mitral") and v >= 100:
+                        # PHT mitral: usar o MENOR valor ≥ 100ms
+                        # (PHT da onda E é menor que PHT de regurgitação/estenose severa)
+                        atual = resultado.get(("VALVA MITRAL","PHT"), float('inf'))
+                        if v < atual:
+                            resultado[("VALVA MITRAL","PHT")] = round(v,1)
+                continue
+            if campo == "_avao_ctx":
+                # Cardiovascular Orifice Area: pega apenas de "Aortic Valve" (mm² → cm²)
+                for it in itens:
+                    site = it["site"]; v = it["valor"]
+                    if _ctx_tem(site,"aortic"):
+                        val_cm2 = round(v/100, 2)
+                        # Usa a maior área (evita pegar áreas pequenas de outros contextos)
+                        atual = resultado.get(("AORTA / VSVE","AVAo (EC-VTI)"), 0)
+                        if val_cm2 > atual:
+                            resultado[("AORTA / VSVE","AVAo (EC-VTI)")] = val_cm2
+                continue
             if campo == "_vti_ctx":
                 for it in itens:
                     site = it["site"]; v = it["valor"]
-                    val_cm = round(v/10,1) if v > 10 else round(v,1)
-                    if _ctx_tem(site,"outflow") and _ctx_tem(site,"left ventricle"):
-                        resultado[("AORTA / VSVE","VTI VSVE")] = val_cm
-                    elif _ctx_tem(site,"aortic"):
+                    # VTI em mm → cm (÷10)
+                    val_cm = round(v/10, 1)
+                    is_aortic  = _ctx_tem(site,"aortic")
+                    is_mitral  = _ctx_tem(site,"mitral")
+                    is_rv_ap   = _ctx_tem(site,"right ventricle") or _ctx_tem(site,"pulmonary")
+                    # VSVE: site "Left Ventricle" sem ser "outflow" explícito
+                    # no Philips EPIQ o site do VSVE é "Left Ventricle"
+                    is_vsve    = (_ctx_tem(site,"left ventricle") and not is_aortic)
+                    if is_aortic:
                         resultado[("AORTA / VSVE","VTI Ao")] = val_cm
-                    elif _ctx_tem(site,"mitral"):
+                    elif is_vsve:
+                        resultado[("AORTA / VSVE","VTI VSVE")] = val_cm
+                    elif is_mitral:
                         resultado[("VALVA MITRAL","VTI mit.")] = val_cm
-                    elif _ctx_tem(site,"outflow") and _ctx_tem(site,"right ventricle"):
+                    elif is_rv_ap:
                         resultado[("TRICÚSPIDE / PULMONAR","VTI AP")] = val_cm
                 continue
             if campo in ("_meanvel_ctx","_meangrad_ctx","_peakvel_ctx","_peakgrad_ctx"):
@@ -438,29 +491,59 @@ def mapear_para_form(medidas_raw):
                     is_aortic    = _ctx_tem(site,"aortic")
                     is_mitral    = _ctx_tem(site,"mitral")
                     is_tricuspid = _ctx_tem(site,"tricuspid")
-                    is_vsve      = _ctx_tem(site,"outflow") and _ctx_tem(site,"left ventricle")
+                    is_vsve      = _ctx_tem(site,"left ventricle") and not is_aortic
                     if campo == "_meangrad_ctx":
-                        if is_aortic:   resultado[("AORTA / VSVE","Grad. méd.")] = round(v,1)
-                        elif is_mitral: resultado[("VALVA MITRAL","Grad. méd.")] = round(v,1)
-                    elif campo == "_peakgrad_ctx":
-                        if is_aortic:      resultado[("AORTA / VSVE","Grad. máx.")] = round(v,1)
-                        elif is_mitral:    resultado[("VALVA MITRAL","Grad. máx.")] = round(v,1)
-                        elif is_tricuspid: resultado[("TRICÚSPIDE / PULMONAR","PSAP")] = round(v,1)
-                    elif campo == "_peakvel_ctx":
-                        val_ms = round(v/1000,2) if v > 10 else round(v,2)
                         if is_aortic:
-                            resultado[("AORTA / VSVE","_peak_ao")] = val_ms
+                            # Coleta todos os gradientes médios aórticos → usa média
+                            resultado.setdefault("_ao_mean_grad_list", []).append(v)
+                        elif is_mitral:
+                            # Mantém o maior gradiente médio mitral
+                            atual = resultado.get(("VALVA MITRAL","Grad. méd."), 0)
+                            resultado[("VALVA MITRAL","Grad. méd.")] = max(round(v,1), atual)
+                    elif campo == "_peakgrad_ctx":
+                        if is_aortic:
+                            # Coleta todos os picos aórticos → usa média
+                            resultado.setdefault("_ao_peak_grad_list", []).append(v)
+                        elif is_mitral:
+                            # Mantém o maior gradiente pico mitral
+                            atual = resultado.get(("VALVA MITRAL","Grad. máx."), 0)
+                            resultado[("VALVA MITRAL","Grad. máx.")] = max(round(v,1), atual)
+                        elif is_tricuspid:
+                            atual = resultado.get(("TRICÚSPIDE / PULMONAR","PSAP"), 0)
+                            resultado[("TRICÚSPIDE / PULMONAR","PSAP")] = max(round(v,1), atual)
+                    elif campo == "_peakvel_ctx":
+                        val_ms = round(v/1000, 2)
+                        if is_aortic:
+                            # Coleta todas as velocidades pico aórticas → usa média
+                            resultado.setdefault("_ao_peak_vel_list", []).append(v)
                         elif is_tricuspid:
                             resultado[("TRICÚSPIDE / PULMONAR","Vel. RT")] = val_ms
+                        elif is_vsve:
+                            resultado[("AORTA / VSVE","_peak_vsve")] = val_ms
                     elif campo == "_meanvel_ctx":
                         if is_vsve:
-                            resultado[("AORTA / VSVE","_mean_vsve")] = round(v/10,1) if v > 10 else round(v,1)
+                            resultado[("AORTA / VSVE","_mean_vsve")] = round(v/10, 1)
                 continue
 
             val = _media_vals(vals_float)
             if val is None: continue
             if conv_fn: val = conv_fn(val)
             resultado[(secao, campo)] = val
+
+    # Consolida listas de gradientes/velocidades aórticas
+    # O Philips EPIQ duplica medições — pegar valores únicos e usar o MENOR par
+    # (corresponde à medição selecionada pelo operador no aparelho)
+    ao_peak_vels = sorted(set(resultado.pop("_ao_peak_vel_list", [])))
+    ao_peak_grads= sorted(set(resultado.pop("_ao_peak_grad_list", [])))
+    ao_mean_grads= sorted(set(resultado.pop("_ao_mean_grad_list", [])))
+
+    if ao_peak_vels:
+        # Menor velocidade pico única → corresponde ao menor gradiente
+        resultado[("AORTA / VSVE","_peak_ao")] = round(ao_peak_vels[0]/1000, 2)
+    if ao_peak_grads:
+        resultado[("AORTA / VSVE","Grad. máx.")] = round(ao_peak_grads[0], 1)
+    if ao_mean_grads:
+        resultado[("AORTA / VSVE","Grad. méd.")] = round(ao_mean_grads[0], 1)
 
     _calcular_derivados(resultado)
     return resultado
@@ -531,8 +614,10 @@ def _calcular_derivados(resultado):
         resultado[("TDI","E/e' MÉDIO")] = round((s_tdi+l_tdi)/2,1)
 
     peak_ao = g("AORTA / VSVE","_peak_ao")
-    if peak_ao and ("AORTA / VSVE","Grad. máx.") not in resultado:
-        resultado[("AORTA / VSVE","Grad. máx.")] = round(4*(peak_ao**2),1)
+    if peak_ao:
+        resultado[("AORTA / VSVE","Vel. máx. Ao")] = peak_ao
+        if ("AORTA / VSVE","Grad. máx.") not in resultado:
+            resultado[("AORTA / VSVE","Grad. máx.")] = round(4*(peak_ao**2),1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -595,6 +680,10 @@ FORMULAS_CALCULADAS = [
     (("AORTA / VSVE","AVAo index"),
         [("AORTA / VSVE","AVAo (EC-VTI)"),("DADOS ANTROPOMÉTRICOS","Superfície corp.")],
         lambda a,bsa: round(a/bsa,2) if bsa else None),
+
+    (("VALVA MITRAL","Área (PHT)"),
+        [("VALVA MITRAL","PHT")],
+        lambda pht: round(220/pht, 2) if pht and pht > 0 else None),
 
     (("VALVA MITRAL","Relação E/A"),
         [("VALVA MITRAL","Vel. onda E"),("VALVA MITRAL","Vel. onda A")],
@@ -755,39 +844,91 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
             return estruturado[(secao, campo)]
         return sugerir_dropdown(secao, campo, valores, sexo)
 
+    def gv(sec, campo):
+        return _gv(valores, sec, campo)
+
+    # ── VENTRÍCULO ESQUERDO ──────────────────────────────────────────
     ve_tam   = get_est("VENTRÍCULO ESQUERDO", "Tamanho da cavidade")
     ve_geom  = get_est("VENTRÍCULO ESQUERDO", "Geometria ventricular")
     ve_fsist = get_est("VENTRÍCULO ESQUERDO", "Função sistólica")
+    ve_diast = get_est("VENTRÍCULO ESQUERDO", "Função diastólica")
 
     ve_dim_txt = "Ventrículo esquerdo (VE) com dimensões normais" if ve_tam == "Normal" \
                  else f"Ventrículo esquerdo (VE) com {ve_tam.lower()}"
     geom_txt   = "Geometria ventricular: normal" if ve_geom == "Normal" \
                  else f"Geometria ventricular: {ve_geom.lower()}"
 
-    feve = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Simpson)")
-    if feve is None: feve = _gv(valores, "CÂMARAS ESQUERDAS", "FEVE (Teichholz)")
+    # Função sistólica — usa FEVE das medidas
+    feve = gv("CÂMARAS ESQUERDAS", "FEVE (Simpson)")
+    if feve is None: feve = gv("CÂMARAS ESQUERDAS", "FEVE (Teichholz)")
     feve_str = f" (FEVE {feve:.0f}%)" if feve else ""
     fsist_txt = f"Função sistólica normal do VE{feve_str}" if ve_fsist == "Normal" \
                 else f"Função sistólica do VE {ve_fsist.lower()}{feve_str}"
 
-    ae_tam  = get_est("ÁTRIO ESQUERDO", "Tamanho da cavidade")
-    ae_vol  = _gv(valores, "CÂMARAS ESQUERDAS", "AE - Vol. bipl. index")
-    ae_diam = _gv(valores, "CÂMARAS ESQUERDAS", "AE - Diâm.")
+    # Função diastólica — usa medidas de TDI e fluxo mitral
+    e_sep   = gv("TDI", "Vel. e' septal")
+    e_lat   = gv("TDI", "Vel. e' lateral")
+    ee_med  = gv("TDI", "E/e' MÉDIO")
+    ea_mit  = gv("VALVA MITRAL", "Relação E/A")
+    dt      = gv("VALVA MITRAL", "Decel. Time")
+    ae_vol  = gv("CÂMARAS ESQUERDAS", "AE - Vol. bipl. index")
+
+    if ve_diast == "Normal":
+        # Monta texto com parâmetros disponíveis
+        params = []
+        if e_sep is not None: params.append(f"e' septal {e_sep:.0f} cm/s")
+        if e_lat is not None: params.append(f"e' lateral {e_lat:.0f} cm/s")
+        if ee_med is not None: params.append(f"E/e' médio {ee_med:.1f}")
+        if ea_mit is not None: params.append(f"E/A {ea_mit:.2f}")
+        params_str = f" ({', '.join(params)})" if params else ""
+        fdiast_txt = f"Função diastólica do VE normal{params_str}"
+    else:
+        grau = ve_diast  # ex: "Disfunção grau I"
+        params = []
+        if ee_med is not None: params.append(f"E/e' médio {ee_med:.1f}")
+        if ea_mit is not None: params.append(f"E/A {ea_mit:.2f}")
+        if dt is not None:     params.append(f"DT {dt:.0f} ms")
+        if ae_vol is not None: params.append(f"volume AE {ae_vol:.1f} mL/m²")
+        params_str = f" ({', '.join(params)})" if params else ""
+        fdiast_txt = f"{grau} do VE{params_str}"
+
+    # Motilidade parietal — Wall Motion
+    motil_txt, wmsi_txt = _gerar_motilidade(wmsi_scores)
+
+    # ── ÁTRIO ESQUERDO ───────────────────────────────────────────────
+    ae_tam = get_est("ÁTRIO ESQUERDO", "Tamanho da cavidade")
     if ae_tam == "Normal":
         ae_txt = "Átrio esquerdo (AE) com volume normal"
     elif ae_vol:
-        ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()} (índice {ae_vol:.1f} mL/m²)"
-    elif ae_diam:
-        ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()} ({ae_diam:.1f} mm)"
+        ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()} (índice biplanar {ae_vol:.1f} mL/m²)"
     else:
         ae_txt = f"Átrio esquerdo (AE) com {ae_tam.lower()}"
 
-    vd_tam = get_est("VENTRÍCULO DIREITO", "Tamanho da cavidade")
-    vd_txt = "Ventrículo direito (VD) com dimensões normais" if vd_tam == "Normal" \
-             else f"Ventrículo direito (VD) com {vd_tam.lower()}"
+    # ── VENTRÍCULO DIREITO ───────────────────────────────────────────
+    vd_tam   = get_est("VENTRÍCULO DIREITO", "Tamanho da cavidade")
+    vd_fsist = get_est("VENTRÍCULO DIREITO", "Função sistólica")
+    tapse    = gv("CÂMARAS DIREITAS", "VD - TAPSE")
+    onda_s   = gv("CÂMARAS DIREITAS", "VD - Onda S")
+    fac      = gv("CÂMARAS DIREITAS", "VD - FAC")
 
+    vd_dim_txt = "Ventrículo direito (VD) com dimensões normais" if vd_tam == "Normal" \
+                 else f"Ventrículo direito (VD) com {vd_tam.lower()}"
+
+    params_vd = []
+    if tapse is not None: params_vd.append(f"TAPSE {tapse:.0f} mm")
+    if onda_s is not None: params_vd.append(f"onda S' {onda_s:.1f} cm/s")
+    if fac is not None:   params_vd.append(f"FAC {fac:.0f}%")
+    params_vd_str = f" ({', '.join(params_vd)})" if params_vd else ""
+    vd_fsist_txt = f"Função sistólica normal do VD{params_vd_str}" if vd_fsist == "Normal" \
+                   else f"Função sistólica do VD reduzida{params_vd_str}"
+
+    psap = gv("CÂMARAS DIREITAS", "VD - PSAP") or gv("CÂMARAS DIREITAS", "AD - PSAP") \
+           or gv("TRICÚSPIDE / PULMONAR", "PSAP")
+    psap_txt = f"PSAP estimada em {psap:.0f} mmHg" if psap is not None else ""
+
+    # ── ÁTRIO DIREITO ────────────────────────────────────────────────
     ad_tam = get_est("ÁTRIO DIREITO", "Tamanho da cavidade")
-    ad_vol = _gv(valores, "CÂMARAS DIREITAS", "AD - Vol. index")
+    ad_vol = gv("CÂMARAS DIREITAS", "AD - Vol. index")
     if ad_tam == "Normal":
         ad_txt = "Átrio direito (AD) com área e volume normais"
     elif ad_vol:
@@ -795,6 +936,7 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
     else:
         ad_txt = f"Átrio direito (AD) com {ad_tam.lower()}"
 
+    # ── VALVAS ───────────────────────────────────────────────────────
     valvas_txt = []
     for valva_sec, nome_valva in [
         ("VALVA AORTA","Valva aórtica"), ("VALVA MITRAL","Valva mitral"),
@@ -808,49 +950,59 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
         if est != "Ausente": refluxos.append(f"estenose {est.lower()}")
         if ins != "Ausente": refluxos.append(f"insuficiência {ins.lower()}")
         ref_str = "Ausência de sinais de refluxo" if not refluxos \
-                  else " | ".join(refluxos).capitalize()
-        valvas_txt.append(f"{nome_valva} {asp_str} | {ref_str}")
+                  else ". ".join(refluxos).capitalize()
+        valvas_txt.append(f"{nome_valva} {asp_str}. {ref_str}")
 
+    # ── VASOS DA BASE ────────────────────────────────────────────────
     ao_raiz  = get_est("AORTA", "Raiz da aorta")
     ao_asc   = get_est("AORTA", "Aorta ascendente")
     ap_tronco= get_est("ARTÉRIA PULMONAR", "Tronco da pulmonar")
-    ao_txt   = "Aorta ascendente com calibre normal | Paredes com textura normal | Fluxo normal" \
-               if ao_raiz == "Normal" and ao_asc == "Normal" \
-               else f"Aorta com alterações (Raiz: {ao_raiz.lower()}, Ascendente: {ao_asc.lower()})"
-    ap_txt   = "Artéria Pulmonar com calibre normal | Fluxo normal" \
-               if ap_tronco == "Normal" else f"Artéria Pulmonar com {ap_tronco.lower()}"
+    seio_ao  = gv("CÂMARAS ESQUERDAS", "Seio aórtico")
+    ao_ascv  = gv("CÂMARAS ESQUERDAS", "Aorta ascend.")
+    ao_params = []
+    if seio_ao:  ao_params.append(f"seio aórtico {seio_ao:.0f} mm")
+    if ao_ascv:  ao_params.append(f"aorta ascendente {ao_ascv:.0f} mm")
+    ao_params_str = f" ({', '.join(ao_params)})" if ao_params else ""
+    ao_txt = f"Aorta ascendente com calibre normal{ao_params_str}. Paredes com textura normal. Fluxo normal" \
+             if ao_raiz == "Normal" and ao_asc == "Normal" \
+             else f"Aorta com alterações{ao_params_str} (Raiz: {ao_raiz.lower()}, Ascendente: {ao_asc.lower()})"
+    ap_txt = "Artéria Pulmonar com calibre normal. Fluxo normal" \
+             if ap_tronco == "Normal" else f"Artéria Pulmonar com {ap_tronco.lower()}"
 
+    # ── PERICÁRDIO ───────────────────────────────────────────────────
+    peric = get_est("PERICÁRDIO", "Geral")
+    peric_txt = "Textura e deslizamento normais do pericárdico" if peric == "Normal" \
+                else peric
+
+    # ── CONGÊNITAS ───────────────────────────────────────────────────
     congenita = get_est("CONGÊNITAS", "Geral")
-    cong_txt  = "Situs solitus, levocardia | Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial | Septos íntegros | Canal arterial não visualizado" \
+    cong_txt  = "Situs solitus, levocardia. Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial. Septos íntegros. Canal arterial não visualizado" \
                 if congenita == "Ausente" else f"Presença de {congenita}"
 
-    tudo_normal = (ve_tam == "Normal" and vd_tam == "Normal" and
-                   ae_tam == "Normal" and ad_tam == "Normal")
-    valvas_normais = all(get_est(v, "Geral") == "Normal"
-                         for v in ["VALVA AORTA","VALVA MITRAL","VALVA TRICÚSPIDE","VALVA PULMONAR"])
-
-    motil_txt, wmsi_txt = _gerar_motilidade(wmsi_scores)
+    # ── LINHAS OPCIONAIS VD ──────────────────────────────────────────
+    vd_extra = [vd_fsist_txt]
+    if psap_txt:
+        vd_extra.append(psap_txt)
 
     return [
         "**CÂMARAS ESQUERDAS**",
         ve_dim_txt, geom_txt,
-        motil_txt, wmsi_txt, fsist_txt, "",
+        motil_txt, wmsi_txt,
+        fsist_txt, fdiast_txt, "",
         ae_txt, "",
-        "**CÂMARAS DIREITAS**", vd_txt, "", ad_txt, "",
+        "**CÂMARAS DIREITAS**",
+        vd_dim_txt, *vd_extra, "",
+        ad_txt, "",
         "**VALVAS CARDÍACAS**",
         valvas_txt[0], valvas_txt[1], valvas_txt[2], valvas_txt[3], "",
         "**VASOS DA BASE**", ao_txt, ap_txt, "",
-        "**PERICÁRDIO**", "Textura e deslizamento normais do pericárdico", "",
+        "**PERICÁRDIO**", peric_txt, "",
         "**CONGÊNITAS**", cong_txt, "",
         "**CONCLUSÃO**",
-        "- Câmaras cardíacas com dimensões normais" if tudo_normal
-            else "- Alterações cavitárias descritas acima",
-        "- Funções sistólica e diastólica biventricular normais" if ve_fsist == "Normal"
-            else "- Disfunção sistólica/diastólica descrita acima",
-        "- Valvas cardíacas com aspectos morfofuncionais normais" if valvas_normais
-            else "- Alterações valvares descritas acima",
-        "- Ecodopplercardiograma transtorácico normal" if tudo_normal and ve_fsist == "Normal" and ve_geom == "Normal"
-            else "- Ecodopplercardiograma transtorácico com alterações",
+        "- Câmaras cardíacas com dimensões normais",
+        "- Funções sistólica e diastólica biventricular normais",
+        "- Valvas cardíacas com aspectos morfofuncionais normais",
+        "- Ecodopplercardiograma transtorácico normal",
     ]
 
 
@@ -990,23 +1142,23 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
     # ── Aba 2: Banco de Dados (linha por paciente) ────────────────────
     ws2 = wb.create_sheet("Banco de Dados")
 
-    info_keys  = list(paciente.keys())
-    med_campos = [(sec, c["name"]) for sec, campos in FORMULARIO.items() for c in campos]
-    est_campos = [(sec, nome) for sec, itens in ESTRUTURA_DROPDOWNS.items() for nome in itens]
-
-    # Estilos específicos para Wall Motion no Banco de Dados
-    WM_FILL  = PatternFill("solid", fgColor="7B3F00")   # marrom escuro — cabeçalho WM
-    WM_FONT  = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
-    WM_D_FILL= PatternFill("solid", fgColor="FFF3E0")   # laranja claro — dados WM
-
-    # Nomes dos 17 segmentos para o Banco de Dados
-    NOMES_SEG_BD = [
+    NOMES_SEG_XLS = [
         '', 'Ant basal','Ant-sep basal','Sep basal',
         'Inf basal','Inf-lat basal','Ant-lat basal',
         'Ant med','Ant-sep med','Sep med',
         'Inf med','Inf-lat med','Ant-lat med',
         'Ant apex','Sep apex','Inf apex','Lat apex','Apex',
     ]
+    sc_bd = {int(k): int(v) for k, v in (wmsi_scores or {str(i):1 for i in range(1,18)}).items()}
+    wmsi_val_bd = sum(sc_bd.values()) / 17
+
+    info_keys  = list(paciente.keys())
+    med_campos = [(sec, c["name"]) for sec, campos in FORMULARIO.items() for c in campos]
+    est_campos = [(sec, nome) for sec, itens in ESTRUTURA_DROPDOWNS.items() for nome in itens]
+    wmsi_campos = [f"WM {NOMES_SEG_XLS[i]}" for i in range(1, 18)] + ["WMSI"]
+
+    W_FILL = PatternFill("solid", fgColor="FF1A4731")   # verde escuro — cabeçalho WMSI
+    W_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
 
     # Cabeçalhos
     col = 1
@@ -1025,15 +1177,9 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
         cell.font = E_FONT; cell.fill = E_FILL; cell.alignment = CTR; cell.border = BRD
         ws2.column_dimensions[get_column_letter(col)].width = 18
         col += 1
-    # Cabeçalho WMSI
-    cell = ws2.cell(row=1, column=col, value="WMSI\n(Wall Motion)")
-    cell.font = WM_FONT; cell.fill = WM_FILL; cell.alignment = CTR; cell.border = BRD
-    ws2.column_dimensions[get_column_letter(col)].width = 12
-    col += 1
-    # Cabeçalhos dos 17 segmentos
-    for seg in range(1, 18):
-        cell = ws2.cell(row=1, column=col, value=f"{NOMES_SEG_BD[seg]}\n(WM seg {seg})")
-        cell.font = WM_FONT; cell.fill = WM_FILL; cell.alignment = CTR; cell.border = BRD
+    for nome in wmsi_campos:
+        cell = ws2.cell(row=1, column=col, value=nome)
+        cell.font = W_FONT; cell.fill = W_FILL; cell.alignment = CTR; cell.border = BRD
         ws2.column_dimensions[get_column_letter(col)].width = 14
         col += 1
 
@@ -1048,17 +1194,10 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
     for sec, nome in est_campos:
         ws2.cell(row=2, column=col, value=str(estruturado.get((sec, nome), ""))).font = D_FONT
         col += 1
-    # Dados Wall Motion — WMSI
-    sc_bd = {int(k): int(v) for k, v in (wmsi_scores or {str(i): 1 for i in range(1, 18)}).items()}
-    wmsi_bd = round(sum(sc_bd.values()) / 17, 2)
-    cell = ws2.cell(row=2, column=col, value=wmsi_bd)
-    cell.font = D_FONT; cell.fill = WM_D_FILL; cell.alignment = CTR; cell.border = BRD
-    col += 1
-    # Dados Wall Motion — 17 segmentos
-    for seg in range(1, 18):
-        cell = ws2.cell(row=2, column=col, value=sc_bd.get(seg, 1))
-        cell.font = D_FONT; cell.fill = WM_D_FILL; cell.alignment = CTR; cell.border = BRD
+    for i in range(1, 18):
+        ws2.cell(row=2, column=col, value=sc_bd.get(i, 1)).font = D_FONT
         col += 1
+    ws2.cell(row=2, column=col, value=round(wmsi_val_bd, 2)).font = D_FONT
 
     ws2.row_dimensions[1].height = 36
     ws2.freeze_panes = "A2"
@@ -1124,10 +1263,14 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
 # SESSION STATE
 # ═══════════════════════════════════════════════════════════════════════
 
+MEDICOS = ["Thiago Gabriel", "Ricardo Lima", "Outro"]
+
 def _init_state():
-    if "valores"  not in st.session_state: st.session_state.valores  = {}
-    if "paciente" not in st.session_state: st.session_state.paciente = {}
-    if "sexo"     not in st.session_state: st.session_state.sexo     = "F"
+    if "valores"       not in st.session_state: st.session_state.valores       = {}
+    if "paciente"      not in st.session_state: st.session_state.paciente      = {}
+    if "sexo"          not in st.session_state: st.session_state.sexo          = "F"
+    if "medico_sel"    not in st.session_state: st.session_state.medico_sel    = MEDICOS[0]
+    if "medico_outro"  not in st.session_state: st.session_state.medico_outro  = ""
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1154,15 +1297,25 @@ def sugerir_dropdown(secao, nome, valores, sexo):
                 elif ddve<=60: return "Dilatação moderada"
                 else: return "Dilatação importante"
         elif nome == "Geometria ventricular":
-            erp, _   = av("CÂMARAS ESQUERDAS","ERP")
-            massa, ok= av("CÂMARAS ESQUERDAS","Massa index")
+            erp,  _ = av("CÂMARAS ESQUERDAS","ERP")
+            massa,_ = av("CÂMARAS ESQUERDAS","Massa index")
+            # Garante float mesmo com vírgula
+            if erp is not None:
+                try: erp = float(str(erp).replace(",","."))
+                except: erp = None
+            # Limiares IMVE: 95 g/m² (F) / 115 g/m² (M)
+            lim_imve = 115 if sexo == "M" else 95
             if erp is not None and massa is not None:
-                if erp>=0.42 and ok is False: return "Hipertrofia concêntrica"
-                elif erp>=0.42: return "Remodelamento concêntrico"
-                elif ok is False: return "Hipertrofia excêntrica"
-                else: return "Normal"
+                erp_alto   = erp > 0.42
+                massa_alta = massa > lim_imve
+                if not erp_alto and not massa_alta: return "Normal"
+                elif erp_alto  and not massa_alta:  return "Remodelamento concêntrico"
+                elif not erp_alto and massa_alta:   return "Hipertrofia excêntrica"
+                else:                               return "Hipertrofia concêntrica"
             elif erp is not None:
-                return "Remodelamento concêntrico" if erp>=0.42 else "Normal"
+                return "Remodelamento concêntrico" if erp > 0.42 else "Normal"
+            elif massa is not None:
+                return "Hipertrofia excêntrica" if massa > lim_imve else "Normal"
             return "Normal"
         elif nome == "Função sistólica":
             fe = _gv(valores,"CÂMARAS ESQUERDAS","FEVE (Simpson)")
@@ -1193,24 +1346,13 @@ def sugerir_dropdown(secao, nome, valores, sexo):
 
     elif secao == "ÁTRIO ESQUERDO":
         if nome == "Tamanho da cavidade":
-            vol,_ = av("CÂMARAS ESQUERDAS","AE - Vol. bipl. index")
-            if vol is not None:
-                if vol<=34: return "Normal"
-                elif vol<=41: return "Dilatação leve"
-                elif vol<=48: return "Dilatação moderada"
-                else: return "Dilatação importante"
-            diam,_ = av("CÂMARAS ESQUERDAS","AE - Diâm.")
-            if diam is not None:
-                if sexo=="M":
-                    if diam<=40: return "Normal"
-                    elif diam<=46: return "Dilatação leve"
-                    elif diam<=52: return "Dilatação moderada"
-                    else: return "Dilatação importante"
-                else:
-                    if diam<=38: return "Normal"
-                    elif diam<=42: return "Dilatação leve"
-                    elif diam<=46: return "Dilatação moderada"
-                    else: return "Dilatação importante"
+            # Classificação pelo volume biplanar indexado (mL/m²) — ASE 2015
+            vol_idx,_ = av("CÂMARAS ESQUERDAS","AE - Vol. bipl. index")
+            if vol_idx is not None:
+                if vol_idx <= 34: return "Normal"
+                elif vol_idx <= 41: return "Dilatação leve"
+                elif vol_idx <= 48: return "Dilatação moderada"
+                else:              return "Dilatação importante"
             return "Normal"
 
     elif secao == "ÁTRIO DIREITO":
@@ -1383,6 +1525,22 @@ def main():
         else:
             st.info("Nenhum dado de paciente carregado. Carregue um SR ou preencha manualmente.")
 
+        st.markdown("---")
+        st.markdown("**Médico Responsável**")
+        sel = st.selectbox("Selecionar médico", MEDICOS,
+                           index=MEDICOS.index(st.session_state.medico_sel)
+                                 if st.session_state.medico_sel in MEDICOS else 0,
+                           key="medico_sel_widget", label_visibility="collapsed")
+        st.session_state.medico_sel = sel
+        if sel == "Outro":
+            outro = st.text_input("Nome do médico", value=st.session_state.medico_outro,
+                                  key="medico_outro_widget")
+            st.session_state.medico_outro = outro
+            medico_final = outro.strip() or "Não informado"
+        else:
+            medico_final = sel
+        st.session_state.paciente["Médico Responsável"] = medico_final
+
     with tab_med:
         st.subheader("📋 Formulário de Medidas")
         sexo = st.session_state.sexo
@@ -1444,88 +1602,15 @@ def main():
     with tab_wmsi:
         st.subheader("🫀 Wall Motion Score Index (WMSI)")
 
-        # Inicializa scores no session_state
         if "wmsi_scores" not in st.session_state:
             st.session_state.wmsi_scores = {str(i): 1 for i in range(1, 18)}
 
-        scores_json = str(st.session_state.wmsi_scores).replace("'", '"')
 
-        # Bullseye — renderizado via SVG inline (sem iframe/canvas)
-        COLORS_WMSI = {1:'#00d000', 2:'#ffd000', 3:'#0099ff', 4:'#ff3030'}
-        CX, CY = 200, 200
-        
-        def _sector_path(r1, r2, a1d, a2d):
-            a1 = math.radians(a1d - 90)
-            a2 = math.radians(a2d - 90)
-            x1o = CX + r2 * math.cos(a1); y1o = CY + r2 * math.sin(a1)
-            x2o = CX + r2 * math.cos(a2); y2o = CY + r2 * math.sin(a2)
-            x1i = CX + r1 * math.cos(a2); y1i = CY + r1 * math.sin(a2)
-            x2i = CX + r1 * math.cos(a1); y2i = CY + r1 * math.sin(a1)
-            la = 1 if (a2d - a1d) > 180 else 0
-            return (f'M {x1o:.1f} {y1o:.1f} '
-                    f'A {r2} {r2} 0 {la} 1 {x2o:.1f} {y2o:.1f} '
-                    f'L {x1i:.1f} {y1i:.1f} '
-                    f'A {r1} {r1} 0 {la} 0 {x2i:.1f} {y2i:.1f} Z')
-        
-        def _label_pos(r1, r2, a1d, a2d):
-            am = math.radians((a1d + a2d) / 2 - 90)
-            rm = (r1 + r2) / 2
-            return CX + rm * math.cos(am), CY + rm * math.sin(am)
-        
-        SEG_NAMES = [
-            '', 'Ant\nbasal','Ant-sep\nbasal','Sep\nbasal','Inf\nbasal','Inf-lat\nbasal','Ant-lat\nbasal',
-            'Ant\nmed','Ant-sep\nmed','Sep\nmed','Inf\nmed','Inf-lat\nmed','Ant-lat\nmed',
-            'Ant\napex','Sep\napex','Inf\napex','Lat\napex','Apex'
-        ]
-        
-        RINGS_DEF = [
-            (120, 188, 6,  list(range(1,7))),
-            (80,  120, 6,  list(range(7,13))),
-            (42,  80,  4,  list(range(13,17))),
-        ]
-        
+        # Funções de geometria SVG removidas — bullseye retirado
         sc = st.session_state.wmsi_scores
-        svg_parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="380" height="380" style="display:block;margin:auto;background:#1a1a2e;border-radius:8px">']
-        
-        for r1, r2, n, segs in RINGS_DEF:
-            step = 360 / n
-            for idx, seg in enumerate(segs):
-                a1, a2 = idx * step, (idx+1) * step
-                color = COLORS_WMSI[int(sc.get(str(seg), 1))]
-                path  = _sector_path(r1, r2, a1, a2)
-                tx, ty = _label_pos(r1, r2, a1, a2)
-                label = SEG_NAMES[seg]
-                svg_parts.append(f'<path d="{path}" fill="{color}" stroke="#000" stroke-width="1.5"/>')
-                for li, line in enumerate(label.split('\n')):
-                    dy = (li - (len(label.split('\n'))-1)/2) * 9
-                    svg_parts.append(f'<text x="{tx:.1f}" y="{ty+dy:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="8" font-weight="bold" fill="rgba(0,0,0,0.9)" font-family="Segoe UI,sans-serif">{line}</text>')
-        
-        # Centro (apex)
-        color17 = COLORS_WMSI[int(sc.get('17', 1))]
-        svg_parts.append(f'<circle cx="{CX}" cy="{CY}" r="42" fill="{color17}" stroke="#000" stroke-width="1.5"/>')
-        svg_parts.append(f'<text x="{CX}" y="{CY}" text-anchor="middle" dominant-baseline="middle" font-size="9" font-weight="bold" fill="rgba(0,0,0,0.9)" font-family="Segoe UI,sans-serif">Apex</text>')
-        svg_parts.append('</svg>')
-        
         wmsi_val = sum(int(v) for v in sc.values()) / 17
-        
-        # Exibe SVG + WMSI
-        st.markdown('\n'.join(svg_parts), unsafe_allow_html=True)
-        col_wmsi_l, col_wmsi_c, col_wmsi_r = st.columns([2,1,2])
-        with col_wmsi_c:
-            st.metric('WMSI', f'{wmsi_val:.2f}')
-        
-        # Legenda
-        st.markdown("""
-        <div style='display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:8px'>
-          <span style='color:#00d000;font-weight:bold'>■</span><span style='color:#ccc;font-size:13px'>Normal (1)</span>&nbsp;&nbsp;
-          <span style='color:#ffd000;font-weight:bold'>■</span><span style='color:#ccc;font-size:13px'>Hipocinético (2)</span>&nbsp;&nbsp;
-          <span style='color:#0099ff;font-weight:bold'>■</span><span style='color:#ccc;font-size:13px'>Acinético (3)</span>&nbsp;&nbsp;
-          <span style='color:#ff3030;font-weight:bold'>■</span><span style='color:#ccc;font-size:13px'>Discinético (4)</span>
-        </div>""", unsafe_allow_html=True)
-        st.caption('Use os selectboxes abaixo para alterar os scores. O bullseye atualiza automaticamente.')
-        
 
-        # Tabela de scores editável abaixo do bullseye
+        # Selectboxes sincronizados
         st.markdown("#### Scores por segmento")
         NOMES_SEG = [
             "Ant basal","Ant-sep basal","Sep basal","Inf basal","Inf-lat basal","Ant-lat basal",
@@ -1534,19 +1619,12 @@ def main():
         ]
         OPCOES = ["1 - Normal","2 - Hipocinético","3 - Acinético","4 - Discinético"]
 
-        cols_header = st.columns([2,1,2,1,2,1])
-        for i, col in enumerate(cols_header):
-            col.markdown("**Segmento**" if i%2==0 else "**Score**")
-
         for i in range(1, 18):
             wkey = f"wmsi_seg_{i}"
-            atual = st.session_state.wmsi_scores.get(str(i), 1) - 1
-            col_grupo = (i-1) // 6
-            col_idx   = (i-1) % 6
-
+            atual = int(sc.get(str(i), 1)) - 1
+            col_idx = (i - 1) % 6
             if col_idx == 0:
                 cols = st.columns([2,1,2,1,2,1])
-
             with cols[(col_idx % 3)*2]:
                 st.markdown(f"<span style='font-size:12px'>{i}. {NOMES_SEG[i-1]}</span>",
                             unsafe_allow_html=True)
@@ -1555,7 +1633,7 @@ def main():
                                     key=wkey, label_visibility="collapsed")
                 st.session_state.wmsi_scores[str(i)] = int(novo[0])
 
-        wmsi_val = sum(st.session_state.wmsi_scores.values()) / 17
+        wmsi_val = sum(int(v) for v in st.session_state.wmsi_scores.values()) / 17
         st.markdown(f"### WMSI = {wmsi_val:.2f}")
         if wmsi_val == 1.0:
             st.success("Motilidade normal")
