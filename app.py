@@ -149,24 +149,24 @@ ESTRUTURA_DROPDOWNS = {
         "Tamanho da cavidade": ["Normal", "Dilatação leve", "Dilatação moderada", "Dilatação importante"],
     },
     "VALVA AORTA": {
-        "Geral": ["Normal", "Calcificação", "Monocúspide", "Bicúspide", "Vegetação"],
+        "Geral": ["Normal", "Calcificação", "Monocúspide", "Bicúspide", "Vegetação", "Prótese biológica", "Prótese mecânica"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderado", "Importante"],
     },
     "VALVA MITRAL": {
-        "Geral": ["Normal", "Calcificação", "Reumática", "Mixomatosa", "Ruptura de cordoalha", "SAM", "Vegetação"],
+        "Geral": ["Normal", "Calcificação", "Reumática", "Mixomatosa", "Ruptura de cordoalha", "SAM", "Vegetação", "Prótese biológica", "Prótese mecânica"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderado", "Importante"],
     },
     "VALVA TRICÚSPIDE": {
-        "Geral": ["Normal", "Calcificação", "Carcinóide", "Vegetação"],
+        "Geral": ["Normal", "Calcificação", "Carcinóide", "Vegetação", "Prótese biológica", "Prótese mecânica"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderado", "Importante"],
     },
     "VALVA PULMONAR": {
         "Geral": ["Normal", "Calcificação", "Vegetação"],
         "Estenose": ["Ausente", "Leve", "Moderada", "Importante"],
-        "Refluxo": ["Ausente", "Leve", "Moderada", "Importante"],
+        "Refluxo": ["Ausente", "Leve", "Moderado", "Importante"],
     },
     "AORTA": {
         "Raiz da aorta": ["Normal", "Dilatação"],
@@ -943,12 +943,12 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
         ("VALVA TRICÚSPIDE","Valva tricúspide"), ("VALVA PULMONAR","Valva pulmonar")]:
         asp = get_est(valva_sec, "Geral")
         est = get_est(valva_sec, "Estenose")
-        ins = get_est(valva_sec, "Insuficiência")
+        ins = get_est(valva_sec, "Refluxo")
         asp_str = "com textura, mobilidade e abertura normais dos folhetos" if asp == "Normal" \
                   else f"com {asp.lower()}"
         refluxos = []
         if est != "Ausente": refluxos.append(f"estenose {est.lower()}")
-        if ins != "Ausente": refluxos.append(f"insuficiência {ins.lower()}")
+        if ins != "Ausente": refluxos.append(f"refluxo {ins.lower()}")
         ref_str = "Ausência de sinais de refluxo" if not refluxos \
                   else ". ".join(refluxos).capitalize()
         valvas_txt.append(f"{nome_valva} {asp_str}. {ref_str}")
@@ -1429,16 +1429,29 @@ def main():
 
         if uploaded:
             srs_validos = []
+            diagnosticos = []
             for f in uploaded:
                 raw_bytes = f.read()
+                modality = sop = "—"
+                tem_content = aceito = False
+                erro_msg = None
                 try:
+                    import io
                     ds_test = pydicom.dcmread(io.BytesIO(raw_bytes), force=True, stop_before_pixels=True)
                     modality = str(getattr(ds_test,"Modality","")).strip().upper()
-                    sop      = str(getattr(ds_test,"SOPClassUID",""))
-                    if modality=="SR" or sop in SR_SOP:
+                    sop      = str(getattr(ds_test,"SOPClassUID","")).strip()
+                    tem_content = hasattr(ds_test, "ContentSequence")
+                    aceito = (modality == "SR") or (sop in SR_SOP) or tem_content
+                    if aceito:
                         srs_validos.append((f.name, raw_bytes))
-                except Exception:
-                    pass
+                except Exception as e:
+                    erro_msg = str(e)
+
+                diagnosticos.append(f"**{f.name}**: Modality=`{modality}`, SOP=`{sop}`, Seq=`{tem_content}`" + (f" (Erro: {erro_msg})" if erro_msg else ""))
+
+            with st.expander("🔍 Diagnóstico dos arquivos enviados (Clique para ver)", expanded=not srs_validos):
+                for d in diagnosticos:
+                    st.write(d)
 
             if not srs_validos:
                 st.warning("Nenhum arquivo SR válido encontrado.")
@@ -1513,8 +1526,8 @@ def main():
             estruturado_atual[(secao, nome)] = val
 
     # ── Tabs ─────────────────────────────────────────────────────────
-    tab_pac, tab_med, tab_est, tab_wmsi, tab_lau = st.tabs(
-        ["👤 Dados do Paciente","📋 Medidas","📊 Estruturado","🫀 Wall Motion","📝 Laudo"])
+    tab_pac, tab_med, tab_est, tab_wmsi, tab_lau, tab_estresse = st.tabs(
+        ["👤 Dados do Paciente","📋 Medidas","📊 Estruturado","🫀 Wall Motion","📝 Laudo", "📋 Eco estresse"])
 
     with tab_pac:
         st.subheader("👤 Dados do Paciente")
@@ -1613,11 +1626,25 @@ def main():
         # Selectboxes sincronizados
         st.markdown("#### Scores por segmento")
         NOMES_SEG = [
-            "Ant basal","Ant-sep basal","Sep basal","Inf basal","Inf-lat basal","Ant-lat basal",
-            "Ant med","Ant-sep med","Sep med","Inf med","Inf-lat med","Ant-lat med",
-            "Ant apex","Sep apex","Inf apex","Lat apex","Apex",
+            "Ant BASAL","Ant-sep BASAL","Inf-sep BASAL","Inf BASAL","Inf-lat BASAL","Ant-lat BASAL",
+            "Ant MEDIAL","Ant-sep MEDIAL","Inf-sep MEDIAL","Inf MEDIAL","Inf-lat MEDIAL","Ant-lat MEDIAL",
+            "Ant APEX","Sep APEX","Inf APEX","Lat APEX","Apical",
         ]
         OPCOES = ["1 - Normal","2 - Hipocinético","3 - Acinético","4 - Discinético"]
+
+        col_bn, col_bh, _ = st.columns([1, 1, 4])
+        with col_bn:
+            if st.button("✅ Todos: 1 - Normal", use_container_width=True):
+                for i in range(1, 18):
+                    st.session_state.wmsi_scores[str(i)] = 1
+                    st.session_state[f"wmsi_seg_{i}"] = "1 - Normal"
+                st.rerun()
+        with col_bh:
+            if st.button("⚠️ Todos: 2 - Hipocinético", use_container_width=True):
+                for i in range(1, 18):
+                    st.session_state.wmsi_scores[str(i)] = 2
+                    st.session_state[f"wmsi_seg_{i}"] = "2 - Hipocinético"
+                st.rerun()
 
         for i in range(1, 18):
             wkey = f"wmsi_seg_{i}"
@@ -1629,7 +1656,7 @@ def main():
                 st.markdown(f"<span style='font-size:12px'>{i}. {NOMES_SEG[i-1]}</span>",
                             unsafe_allow_html=True)
             with cols[(col_idx % 3)*2+1]:
-                novo = st.selectbox("", OPCOES, index=atual,
+                novo = st.selectbox(f"Segmento {i}", OPCOES, index=atual,
                                     key=wkey, label_visibility="collapsed")
                 st.session_state.wmsi_scores[str(i)] = int(novo[0])
 
@@ -1660,6 +1687,385 @@ def main():
                                data=conteudo.encode("utf-8"),
                                file_name=f"laudo_{nome_pac}.txt",
                                mime="text/plain")
+
+    with tab_estresse:
+        st.subheader("📋 Eco Estresse com Dobutamina")
+
+        # ── Inicialização no session_state ──────────────────────────────
+        if "eco_estresse" not in st.session_state:
+            st.session_state.eco_estresse = {
+                "idade": None,
+                # Tabela protocolo
+                "Dose":     {"Repouso": "Repouso", "0-3": "5",  "3-6": "10", "6-9": "20", "9-12": "30", "12-15": "40", "Recup.": "Recup."},
+                "Atropina": {"Repouso": "",         "0-3": "",   "3-6": "",   "6-9": "0,5","9-12": "",   "12-15": "",   "Recup.": ""},
+                "PAs":      {"Repouso": "",         "0-3": "",   "3-6": "",   "6-9": "",   "9-12": "",   "12-15": "",   "Recup.": ""},
+                "PAd":      {"Repouso": "",         "0-3": "",   "3-6": "",   "6-9": "",   "9-12": "",   "12-15": "",   "Recup.": ""},
+                "FC":       {"Repouso": "",         "0-3": "",   "3-6": "",   "6-9": "",   "9-12": "",   "12-15": "",   "Recup.": ""},
+                # Campos narrativos
+                "dose_inicio": "",
+                "dose_pico": "",
+                "atrop_total": "",
+                "antecedentes": "",
+                "medicacoes": "",
+                "sintomatologia": "O paciente não referiu sintomas durante a realização do exame",
+                "ecg_repouso": "Ritmo sinusal, regular, sem alterações de ST-T.",
+                "ecg_pico": "Taquicardia sinusal, sem alterações significativas em relação ao padrão de repouso.",
+                "analise_segmentar": "Ausência de alteração na contratilidade segmentar do V.E. no repouso. Observado aumento da mobilidade e espessamento sistólico de todas as paredes do V.E. durante o estresse farmacológico",
+                "conclusao": "",
+            }
+
+        ee = st.session_state.eco_estresse
+        estagios = ["Repouso", "0-3", "3-6", "6-9", "9-12", "12-15", "Recup."]
+        doses    = ["Repouso", "5",   "10",  "20",  "30",   "40",    "Recup."]
+
+        # ── Cabeçalho: Idade e FC calculadas ────────────────────────────
+        st.markdown("##### Parâmetros do Paciente")
+        col_id, col_fcmax, col_fcsub = st.columns(3)
+        with col_id:
+            idade_val = st.number_input(
+                "Idade (anos)", min_value=1, max_value=120,
+                value=int(ee["idade"]) if ee["idade"] else 50,
+                step=1, key="ee_idade"
+            )
+            ee["idade"] = idade_val
+
+        fc_max  = 220 - idade_val
+        fc_sub  = round(fc_max * 0.85)
+
+        with col_fcmax:
+            st.metric("FC máxima prevista (bpm)", fc_max, help="220 − idade")
+        with col_fcsub:
+            st.metric("FC submáxima prevista (bpm)", fc_sub, help="FC máxima × 0,85")
+
+        st.divider()
+
+        # ── Informações Técnicas ────────────────────────────────────────
+        st.markdown("##### Informações Técnicas")
+        col_di, col_dp, col_at = st.columns(3)
+        with col_di:
+            ee["dose_inicio"] = st.text_input(
+                "Dose início (mcg/kg/min)", value=ee["dose_inicio"],
+                placeholder="ex: 5", key="ee_dose_inicio")
+        with col_dp:
+            ee["dose_pico"] = st.text_input(
+                "Dose pico (mcg/kg/min)", value=ee["dose_pico"],
+                placeholder="ex: 40", key="ee_dose_pico")
+        with col_at:
+            ee["atrop_total"] = st.text_input(
+                "Atropina total (mg)", value=ee["atrop_total"],
+                placeholder="ex: 1", key="ee_atrop_total")
+
+        st.markdown("##### Informações Pessoais")
+        col_ant, col_med = st.columns(2)
+        with col_ant:
+            ee["antecedentes"] = st.text_input(
+                "Antecedentes", value=ee["antecedentes"],
+                placeholder="HAS, DM, DAC prévia…", key="ee_antecedentes")
+        with col_med:
+            ee["medicacoes"] = st.text_input(
+                "Medicações em uso", value=ee["medicacoes"],
+                key="ee_medicacoes")
+
+        st.markdown("##### Sintomatologia")
+        ee["sintomatologia"] = st.text_area(
+            "Sintomatologia", value=ee["sintomatologia"], height=68,
+            label_visibility="collapsed", key="ee_sintomatologia")
+
+        st.markdown("##### Eletrocardiograma (ECG)")
+        col_ecgr, col_ecgp = st.columns(2)
+        with col_ecgr:
+            ee["ecg_repouso"] = st.text_input(
+                "ECG repouso", value=ee["ecg_repouso"], key="ee_ecg_repouso")
+        with col_ecgp:
+            ee["ecg_pico"] = st.text_input(
+                "ECG pico estresse", value=ee["ecg_pico"], key="ee_ecg_pico")
+
+        st.markdown("##### Análise Segmentar")
+        ee["analise_segmentar"] = st.text_area(
+            "Análise segmentar", value=ee["analise_segmentar"], height=80,
+            label_visibility="collapsed", key="ee_analise_seg")
+
+        st.divider()
+
+        # ── Tabela de estágios ──────────────────────────────────────────
+        st.markdown("##### Protocolo de Dobutamina")
+
+        # Linha de cabeçalho da tabela (estágios de tempo)
+        header_cols = st.columns([2] + [1]*7)
+        header_cols[0].markdown("**Parâmetro**")
+        header_cols[1].markdown("**Repouso**")
+        header_cols[2].markdown("**0 – 3 min**")
+        header_cols[3].markdown("**3 – 6 min**")
+        header_cols[4].markdown("**6 – 9 min**")
+        header_cols[5].markdown("**9 – 12 min**")
+        header_cols[6].markdown("**12 – 15 min**")
+        header_cols[7].markdown("**Recup.**")
+
+        # Linha: Dose (mcg/kg/min) — somente leitura
+        dose_cols = st.columns([2] + [1]*7)
+        dose_cols[0].markdown("**Dose** *(mcg/kg/min)*")
+        dose_labels = ["Repouso", "5", "10", "20", "30", "40", "Recup."]
+        for i, lbl in enumerate(dose_labels):
+            dose_cols[i+1].markdown(f"<div style='text-align:center;padding-top:8px'>{lbl}</div>", unsafe_allow_html=True)
+
+        # Linha: Atropina (mg)
+        atrop_cols = st.columns([2] + [1]*7)
+        atrop_cols[0].markdown("**Atropina** *(mg)*")
+        for i, est in enumerate(estagios):
+            ee["Atropina"][est] = atrop_cols[i+1].text_input(
+                label=f"Atropina_{est}", value=ee["Atropina"][est],
+                label_visibility="collapsed", key=f"ee_atrop_{est}"
+            )
+
+        # Linha: PAs (mmHg)
+        pas_cols = st.columns([2] + [1]*7)
+        pas_cols[0].markdown("**PAs** *(mmHg)*")
+        for i, est in enumerate(estagios):
+            ee["PAs"][est] = pas_cols[i+1].text_input(
+                label=f"PAs_{est}", value=ee["PAs"][est],
+                label_visibility="collapsed", key=f"ee_PAs_{est}"
+            )
+
+        # Linha: PAd (mmHg)
+        pad_cols = st.columns([2] + [1]*7)
+        pad_cols[0].markdown("**PAd** *(mmHg)*")
+        for i, est in enumerate(estagios):
+            ee["PAd"][est] = pad_cols[i+1].text_input(
+                label=f"PAd_{est}", value=ee["PAd"][est],
+                label_visibility="collapsed", key=f"ee_PAd_{est}"
+            )
+
+        # Linha: FC (bpm)
+        fc_cols = st.columns([2] + [1]*7)
+        fc_cols[0].markdown("**FC** *(bpm)*")
+        for i, est in enumerate(estagios):
+            ee["FC"][est] = fc_cols[i+1].text_input(
+                label=f"FC_{est}", value=ee["FC"][est],
+                label_visibility="collapsed", key=f"ee_FC_{est}"
+            )
+
+        st.divider()
+
+        # ── Conclusão ───────────────────────────────────────────────────
+        st.markdown("##### Conclusão")
+        conclusao_default = (
+            "- Exame (eficaz/submáximo), (não) atingindo 85% da FC máxima calculada para idade;\n"
+            "- Ausência de alterações eletrocardiográficas sugestivas de isquemia;\n"
+            "- Exame (positivo/negativo) para isquemia miocárdica induzida pelo estresse;\n"
+            "- (Ausência de viabilidade miocárdica / Presença de viabilidade miocárdica em região... do ventrículo esquerdo)"
+        )
+        if not ee["conclusao"]:
+            ee["conclusao"] = conclusao_default
+        ee["conclusao"] = st.text_area(
+            "Conclusão", value=ee["conclusao"], height=120,
+            label_visibility="collapsed", key="ee_conclusao")
+
+        st.divider()
+
+        # ── Exportar laudo completo como texto ──────────────────────────
+        def gerar_txt_estresse():
+            sep  = "=" * 75
+            sep2 = "-" * 102
+            col_w = 12
+            par_w = 18
+
+            dose_i = ee["dose_inicio"] or "__"
+            dose_p = ee["dose_pico"]   or "__"
+            atrop  = ee["atrop_total"] or "__"
+
+            doc = []
+            doc.append(sep)
+            doc.append("  ECOCARDIOGRAMA COM ESTRESSE FARMACOLÓGICO")
+            doc.append(sep)
+            doc.append("")
+
+            # Informações Técnicas
+            doc.append("INFORMAÇÕES TÉCNICAS")
+            doc.append("")
+            doc.append(
+                f"Exame realizado no repouso e durante administração endovenosa de Dobutamina, "
+                f"iniciada na dose de {dose_i}mcg/kg/min, seguido de aumento gradual da infusão, "
+                f"com pico do estresse em {dose_p}mcg/kg/min, após administração de Atropina ({atrop}mg). "
+                f"Exame interrompido por devido fim do protocolo. "
+                f"Realizado infusão de Metoprolol endovenoso (5mg) na fase de recuperação."
+            )
+            doc.append("")
+
+            # Informações Pessoais
+            doc.append("INFORMAÇÕES PESSOAIS")
+            doc.append("")
+            doc.append(f"Antecedentes: {ee['antecedentes']}")
+            doc.append(f"Medicações em uso: {ee['medicacoes']}")
+            doc.append("")
+
+            # Sintomatologia
+            doc.append("SINTOMATOLOGIA")
+            doc.append("")
+            doc.append(ee["sintomatologia"])
+            doc.append("")
+
+            # ECG
+            doc.append("ELETROCARDIOGRAMA (ECG)")
+            doc.append("")
+            doc.append(f"ECG repouso: {ee['ecg_repouso']}")
+            doc.append(f"ECG pico estresse: {ee['ecg_pico']}")
+            doc.append("")
+
+            # Análise Segmentar
+            doc.append("ANÁLISE SEGMENTAR")
+            doc.append("")
+            doc.append(ee["analise_segmentar"])
+            doc.append("")
+
+            # Dados do Exame (tabela)
+            doc.append("DADOS DO EXAME")
+            doc.append(f"Idade: {idade_val} anos")
+            doc.append(f"FC máxima prevista: {fc_max} bpm  (220 - idade)")
+            doc.append(f"FC submáxima prevista: {fc_sub} bpm  (FC máxima x 0,85)")
+            doc.append("")
+
+            header = "Parâmetro".ljust(par_w) + "".join(e.ljust(col_w) for e in estagios)
+            doc.append(header)
+            doc.append("-" * len(header))
+            doc.append("Tempo (min)".ljust(par_w)       + "".join(e.ljust(col_w) for e in ["0", "0-3", "3-6", "6-9", "9-12", "12-15", ">15"]))
+            doc.append("Dose (mcg/kg/min)".ljust(par_w) + "".join(d.ljust(col_w) for d in dose_labels))
+            for param in ["Atropina", "PAs", "PAd", "FC"]:
+                unidade = {"Atropina": "(mg)", "PAs": "(mmHg)", "PAd": "(mmHg)", "FC": "(bpm)"}[param]
+                row = f"{param} {unidade}".ljust(par_w)
+                row += "".join((ee[param][e] or "").ljust(col_w) for e in estagios)
+                doc.append(row)
+            doc.append("")
+
+            # Conclusão
+            doc.append("CONCLUSÃO")
+            doc.append("")
+            doc.append(ee["conclusao"])
+            doc.append("")
+
+            return "\n".join(doc)
+
+        nome_pac_ee = st.session_state.paciente.get("Nome", "paciente").replace(" ", "_").replace("/", "-")
+
+        txt_preview = gerar_txt_estresse()
+        #st.text_area("Pré-visualização do laudo", value=txt_preview, height=300, key="ee_preview")
+
+        st.download_button(
+            "📄 Baixar Eco Estresse (.txt)",
+            data=txt_preview.encode("utf-8"),
+            file_name=f"eco_estresse_{nome_pac_ee}.txt",
+            mime="text/plain",
+        )
+
+        # ── Gráfico de linhas: PAs, PAd e FC ───────────────────────────
+        st.divider()
+        st.markdown("##### 📈 Gráfico de Tendência")
+
+        import matplotlib.pyplot as plt
+        import matplotlib.ticker as ticker
+
+        def parse_num(val):
+            """Converte string (aceita vírgula) para float; retorna None se inválido."""
+            try:
+                return float(str(val).replace(",", ".").strip())
+            except (ValueError, TypeError):
+                return None
+
+        # Montar séries numéricas por estágio
+        x_labels = estagios  # ["Repouso", "0-3", "3-6", "6-9", "9-12", "12-15", "Recup."]
+        pas_vals = [parse_num(ee["PAs"][e])  for e in x_labels]
+        pad_vals = [parse_num(ee["PAd"][e])  for e in x_labels]
+        fc_vals  = [parse_num(ee["FC"][e])   for e in x_labels]
+
+        # Só plota se houver ao menos 2 pontos em qualquer série
+        tem_grafico = (
+            sum(v is not None for v in pas_vals) >= 2 or
+            sum(v is not None for v in pad_vals) >= 2 or
+            sum(v is not None for v in fc_vals)  >= 2
+        )
+
+        if not tem_grafico:
+            st.info("Preencha ao menos 2 estágios de PAs, PAd ou FC para visualizar o gráfico.")
+        else:
+            x_idx = list(range(len(x_labels)))
+
+            fig, ax1 = plt.subplots(figsize=(10, 4.5))
+            fig.patch.set_facecolor("#0e1117")
+            ax1.set_facecolor("#1a1d2e")
+
+            # Eixo esquerdo: PA
+            cor_pas = "#e74c3c"
+            cor_pad = "#e67e22"
+            cor_fc  = "#3498db"
+
+            def plot_serie(ax, x_idx, vals, label, color, marker="o", linestyle="-"):
+                xs = [x_idx[i] for i, v in enumerate(vals) if v is not None]
+                ys = [v          for v in vals if v is not None]
+                if len(xs) >= 1:
+                    ax.plot(xs, ys, color=color, marker=marker, linestyle=linestyle,
+                            linewidth=2, markersize=6, label=label)
+                    for xi, yi in zip(xs, ys):
+                        ax.annotate(f"{yi:.0f}", (xi, yi),
+                                    textcoords="offset points", xytext=(0, 8),
+                                    ha="center", fontsize=8, color=color)
+
+            plot_serie(ax1, x_idx, pas_vals, "PAs (mmHg)", cor_pas)
+            plot_serie(ax1, x_idx, pad_vals, "PAd (mmHg)", cor_pad)
+
+            ax1.set_ylabel("Pressão Arterial (mmHg)", color="white", fontsize=10)
+            ax1.tick_params(axis="y", labelcolor="white")
+            ax1.tick_params(axis="x", labelcolor="white")
+            ax1.set_xticks(x_idx)
+            ax1.set_xticklabels(x_labels, fontsize=9, color="white")
+            ax1.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            ax1.grid(axis="y", color="#2c2f45", linewidth=0.7, linestyle="--")
+            ax1.spines["bottom"].set_color("#444")
+            ax1.spines["left"].set_color("#444")
+            ax1.spines["top"].set_visible(False)
+            ax1.spines["right"].set_visible(False)
+
+            # Eixo direito: FC
+            ax2 = ax1.twinx()
+            ax2.set_facecolor("#1a1d2e")
+            plot_serie(ax2, x_idx, fc_vals, "FC (bpm)", cor_fc, marker="s", linestyle="--")
+            ax2.set_ylabel("FC (bpm)", color=cor_fc, fontsize=10)
+            ax2.tick_params(axis="y", labelcolor=cor_fc)
+            ax2.spines["right"].set_color(cor_fc)
+            ax2.spines["top"].set_visible(False)
+            ax2.spines["left"].set_visible(False)
+            ax2.spines["bottom"].set_color("#444")
+
+            # Linha FC submáxima
+            ax2.axhline(y=fc_sub, color=cor_fc, linestyle=":", linewidth=1.2, alpha=0.6)
+            ax2.annotate(f"FC submáx {fc_sub} bpm", xy=(x_idx[-1], fc_sub),
+                         xytext=(-5, 5), textcoords="offset points",
+                         ha="right", fontsize=8, color=cor_fc, alpha=0.8)
+
+            # Legenda unificada
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines1 + lines2, labels1 + labels2,
+                       loc="upper left", framealpha=0.2,
+                       labelcolor="white", facecolor="#1a1d2e", edgecolor="#444",
+                       fontsize=9)
+
+            ax1.set_title("Eco Estresse com Dobutamina — PAs / PAd / FC por Estágio",
+                          color="white", fontsize=11, pad=12)
+
+            fig.tight_layout()
+            st.pyplot(fig)
+
+            # Botão de download PNG
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                        facecolor=fig.get_facecolor())
+            buf.seek(0)
+            st.download_button(
+                "🖼️ Baixar gráfico (.png)",
+                data=buf,
+                file_name=f"eco_estresse_grafico_{nome_pac_ee}.png",
+                mime="image/png",
+            )
+            plt.close(fig)
 
     st.divider()
 
