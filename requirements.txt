@@ -18,6 +18,7 @@ Jinja2==3.1.6
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 MarkupSafe==3.0.3
+matplotlib==3.10.3
 narwhals==2.22.1
 numpy==2.4.6
 openpyxl==3.1.5
