@@ -1263,7 +1263,7 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
 # SESSION STATE
 # ═══════════════════════════════════════════════════════════════════════
 
-MEDICOS = ["Thiago Gabriel", "Ricardo Lima", "Outro"]
+MEDICOS = ["Thiago Gabriel", "Ricardo Lima", "Carla Sueli", "Outro"]
 
 def _init_state():
     if "valores"       not in st.session_state: st.session_state.valores       = {}
@@ -1382,7 +1382,7 @@ def sugerir_dropdown(secao, nome, valores, sexo):
             return "Dilatação" if ap is not None and ap>25 else "Normal"
 
     # Padrões
-    if nome in ("Estenose","Insuficiência") or secao == "CONGÊNITAS":
+    if nome in ("Estenose","Refluxo") or secao == "CONGÊNITAS":
         return "Ausente"
     return "Normal"
 
@@ -1436,7 +1436,6 @@ def main():
                 tem_content = aceito = False
                 erro_msg = None
                 try:
-                    import io
                     ds_test = pydicom.dcmread(io.BytesIO(raw_bytes), force=True, stop_before_pixels=True)
                     modality = str(getattr(ds_test,"Modality","")).strip().upper()
                     sop      = str(getattr(ds_test,"SOPClassUID","")).strip()
