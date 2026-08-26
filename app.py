@@ -45,12 +45,13 @@ FORMULARIO = {
         {"name": "Septo",                 "unit": "mm",    "ref_mas": "6 - 10",   "ref_fem": "6 - 9",    "calc": False},
         {"name": "Parede post.",          "unit": "mm",    "ref_mas": "6 - 10",   "ref_fem": "6 - 9",    "calc": False},
         {"name": "DdVE",                  "unit": "mm",    "ref_mas": "42 - 58",  "ref_fem": "38 - 52",  "calc": False},
+        {"name": "DdVE index",            "unit": "mm/m²", "ref_mas": "",         "ref_fem": "",         "calc": True},
         {"name": "DsVE",                  "unit": "mm",    "ref_mas": "25 - 40",  "ref_fem": "22 - 35",  "calc": False},
         {"name": "VDVE",                  "unit": "mL",    "ref_mas": "62 - 150", "ref_fem": "46 - 106", "calc": True},
         {"name": "VSVE",                  "unit": "mL",    "ref_mas": "21 - 61",  "ref_fem": "14 - 42",  "calc": True},
         {"name": "VDVE index",            "unit": "mL/m²", "ref_mas": "24 - 74",  "ref_fem": "29 - 61",  "calc": True},
         {"name": "FEVE (Teichholz)",      "unit": "%",     "ref_mas": "52 - 72",  "ref_fem": "54 - 74",  "calc": True},
-        {"name": "FEVE (Simpson)",        "unit": "%",     "ref_mas": "52 - 72",  "ref_fem": "54 - 74",  "calc": False},
+        {"name": "FEVE (Simpson)",        "unit": "%",     "ref_mas": "",         "ref_fem": "",         "calc": False},
         {"name": "ERP",                   "unit": "",      "ref_mas": "< 0,42",   "ref_fem": "< 0,42",   "calc": True},
         {"name": "Massa VE",              "unit": "g",     "ref_mas": "88 - 224", "ref_fem": "67 - 162", "calc": True},
         {"name": "Massa index",           "unit": "g/m²",  "ref_mas": "49 - 115", "ref_fem": "43 - 95",  "calc": True},
@@ -84,7 +85,6 @@ FORMULARIO = {
         {"name": "Volume Regurg.", "unit": "mL",   "ref_mas": "< 30",     "ref_fem": "< 30",     "calc": True},
     ],
     "AORTA / VSVE": [
-        {"name": "Diâm VSVE",      "unit": "mm",    "ref_mas": "",        "ref_fem": "",        "calc": False},
         {"name": "VTI VSVE",       "unit": "cm",    "ref_mas": "",        "ref_fem": "",        "calc": False},
         {"name": "VTI Ao",         "unit": "cm",    "ref_mas": "",        "ref_fem": "",        "calc": False},
         {"name": "AVAo (EC-VTI)",  "unit": "cm²",   "ref_mas": "",        "ref_fem": "",        "calc": True},
@@ -201,8 +201,7 @@ MAPA_DICOM = {
     "Ascending Aortic Diameter":   [("CÂMARAS ESQUERDAS", "Aorta ascend.", _mm)],
     "Aortic Root Diameter":        [("CÂMARAS ESQUERDAS", "Seio aórtico", _mm)],
     "Cardiovascular Orifice Diameter": [
-        ("CÂMARAS ESQUERDAS", "Diâm VSVE", _mm),
-        ("AORTA / VSVE",      "Diâm VSVE", _mm)],
+        ("CÂMARAS ESQUERDAS", "Diâm VSVE", _mm)],
     "Left Atrium Antero-posterior Systolic Dimension": [("CÂMARAS ESQUERDAS", "AE - Diâm.", _mm)],
     "Left Atrium Systolic Volume": [("CÂMARAS ESQUERDAS", "AE - Vol. bipl.",
         lambda v: round(v/1000,1) if v > 100 else round(v,1))],
@@ -587,6 +586,7 @@ def _calcular_derivados(resultado):
         for (s,c,src_s,src_c) in [
             ("CÂMARAS ESQUERDAS","Aorta ascend. index","CÂMARAS ESQUERDAS","Aorta ascend."),
             ("CÂMARAS ESQUERDAS","VDVE index","CÂMARAS ESQUERDAS","VDVE"),
+            ("CÂMARAS ESQUERDAS","DdVE index","CÂMARAS ESQUERDAS","DdVE"),
             ("CÂMARAS ESQUERDAS","AE - Vol. bipl. index","CÂMARAS ESQUERDAS","AE - Vol. bipl."),
             ("CÂMARAS DIREITAS","AD - Vol. index","CÂMARAS DIREITAS","AD - Vol."),
         ]:
@@ -598,7 +598,7 @@ def _calcular_derivados(resultado):
         if massa and ("CÂMARAS ESQUERDAS","Massa index") not in resultado:
             resultado[("CÂMARAS ESQUERDAS","Massa index")] = round(massa/bsa,1)
 
-        d  = g("AORTA / VSVE","Diâm VSVE")
+        d  = g("CÂMARAS ESQUERDAS","Diâm VSVE")
         vv = g("AORTA / VSVE","VTI VSVE")
         va = g("AORTA / VSVE","VTI Ao")
         avao = g("AORTA / VSVE","AVAo (EC-VTI)")
@@ -665,6 +665,10 @@ FORMULAS_CALCULADAS = [
         [("CÂMARAS ESQUERDAS","VDVE"),("DADOS ANTROPOMÉTRICOS","Superfície corp.")],
         lambda v,bsa: round(v/bsa,1) if bsa else None),
 
+    (("CÂMARAS ESQUERDAS","DdVE index"),
+        [("CÂMARAS ESQUERDAS","DdVE"),("DADOS ANTROPOMÉTRICOS","Superfície corp.")],
+        lambda ddve,bsa: round(ddve/bsa,1) if bsa else None),
+
     (("CÂMARAS ESQUERDAS","AE - Vol. bipl. index"),
         [("CÂMARAS ESQUERDAS","AE - Vol. bipl."),("DADOS ANTROPOMÉTRICOS","Superfície corp.")],
         lambda v,bsa: round(v/bsa,1) if bsa else None),
@@ -674,7 +678,7 @@ FORMULAS_CALCULADAS = [
         lambda v,bsa: round(v/bsa,1) if bsa else None),
 
     (("AORTA / VSVE","AVAo (EC-VTI)"),
-        [("AORTA / VSVE","Diâm VSVE"),("AORTA / VSVE","VTI VSVE"),("AORTA / VSVE","VTI Ao")],
+        [("CÂMARAS ESQUERDAS","Diâm VSVE"),("AORTA / VSVE","VTI VSVE"),("AORTA / VSVE","VTI Ao")],
         lambda d,vv,va: round((3.1416*((d/10)/2)**2*vv)/va,2) if va else None),
 
     (("AORTA / VSVE","AVAo index"),
@@ -944,8 +948,20 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
         asp = get_est(valva_sec, "Geral")
         est = get_est(valva_sec, "Estenose")
         ins = get_est(valva_sec, "Refluxo")
-        asp_str = "com textura, mobilidade e abertura normais dos folhetos" if asp == "Normal" \
-                  else f"com {asp.lower()}"
+        
+        if isinstance(asp, list):
+            if "Normal" in asp and len(asp) == 1:
+                asp_str = "com textura, mobilidade e abertura normais dos folhetos"
+            else:
+                asp_clean = [a for a in asp if a != "Normal"]
+                if not asp_clean:
+                    asp_str = "com textura, mobilidade e abertura normais dos folhetos"
+                else:
+                    asp_str = f"com {', '.join(a.lower() for a in asp_clean)}"
+        else:
+            asp_str = "com textura, mobilidade e abertura normais dos folhetos" if asp == "Normal" \
+                      else f"com {asp.lower()}"
+
         refluxos = []
         if est != "Ausente": refluxos.append(f"estenose {est.lower()}")
         if ins != "Ausente": refluxos.append(f"refluxo {ins.lower()}")
@@ -1128,7 +1144,10 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
                 cell.alignment = LEFT if c==1 else CTR
             row += 1; sec_ant = secao; zebra = False
         for nome in itens:
-            val = str(estruturado.get((secao, nome), ""))
+            val = estruturado.get((secao, nome), "")
+            if isinstance(val, list):
+                val = ", ".join(val)
+            val = str(val)
             fill = G_FILL if zebra else None
             for c, v in enumerate(["", nome, val], 1):
                 cell = ws.cell(row=row, column=c, value=v)
@@ -1192,7 +1211,10 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
         ws2.cell(row=2, column=col, value=str(valores.get((sec, nome), ""))).font = D_FONT
         col += 1
     for sec, nome in est_campos:
-        ws2.cell(row=2, column=col, value=str(estruturado.get((sec, nome), ""))).font = D_FONT
+        val = estruturado.get((sec, nome), "")
+        if isinstance(val, list):
+            val = ", ".join(val)
+        ws2.cell(row=2, column=col, value=str(val)).font = D_FONT
         col += 1
     for i in range(1, 18):
         ws2.cell(row=2, column=col, value=sc_bd.get(i, 1)).font = D_FONT
@@ -1264,6 +1286,7 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
 # ═══════════════════════════════════════════════════════════════════════
 
 MEDICOS = ["Thiago Gabriel", "Ricardo Lima", "Carla Sueli", "Outro"]
+TIPOS_EXAME = ["Ecocardiograma transtorácico", "Ecocardiograma transesofágico", "Eco estresse"]
 
 def _init_state():
     if "valores"       not in st.session_state: st.session_state.valores       = {}
@@ -1271,6 +1294,7 @@ def _init_state():
     if "sexo"          not in st.session_state: st.session_state.sexo          = "F"
     if "medico_sel"    not in st.session_state: st.session_state.medico_sel    = MEDICOS[0]
     if "medico_outro"  not in st.session_state: st.session_state.medico_outro  = ""
+    if "tipo_exame_sel" not in st.session_state: st.session_state.tipo_exame_sel = TIPOS_EXAME[0]
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1517,10 +1541,21 @@ def main():
             key  = f"estr_{secao}_{nome}"
             skey = f"sug_{secao}_{nome}"
             nova_sug = sugerir_dropdown(secao, nome, valores_exibir, sexo_atual)
+            
+            is_multi = secao in ("VALVA AORTA", "VALVA MITRAL", "VALVA TRICÚSPIDE", "VALVA PULMONAR") and nome == "Geral"
+            if is_multi and isinstance(nova_sug, str):
+                nova_sug = [nova_sug]
+                
+            if is_multi and isinstance(st.session_state.get(key), str):
+                st.session_state[key] = [st.session_state[key]]
+            if is_multi and isinstance(st.session_state.get(skey), str):
+                st.session_state[skey] = [st.session_state[skey]]
+
             if nova_sug != st.session_state.get(skey):
                 st.session_state[key]  = nova_sug
                 st.session_state[skey] = nova_sug
-            val = st.session_state.get(key) or nova_sug
+            val = st.session_state.get(key)
+            if val is None: val = nova_sug
             st.session_state[key] = val
             estruturado_atual[(secao, nome)] = val
 
@@ -1531,13 +1566,23 @@ def main():
     with tab_pac:
         st.subheader("👤 Dados do Paciente")
         if st.session_state.paciente:
-            for k,v in st.session_state.paciente.items():
+            for k,v in list(st.session_state.paciente.items()):
+                if k in ("Médico Responsável", "Tipo de Exame"): continue
                 novo = st.text_input(k, value=v, key=f"pac_{k}")
                 if novo != v: st.session_state.paciente[k] = novo
         else:
             st.info("Nenhum dado de paciente carregado. Carregue um SR ou preencha manualmente.")
 
         st.markdown("---")
+
+        st.markdown("**Tipo de Exame**")
+        sel_exame = st.selectbox("Selecionar tipo de exame", TIPOS_EXAME,
+                                 index=TIPOS_EXAME.index(st.session_state.tipo_exame_sel)
+                                       if st.session_state.tipo_exame_sel in TIPOS_EXAME else 0,
+                                 key="tipo_exame_sel_widget", label_visibility="collapsed")
+        st.session_state.tipo_exame_sel = sel_exame
+        st.session_state.paciente["Tipo de Exame"] = sel_exame
+
         st.markdown("**Médico Responsável**")
         sel = st.selectbox("Selecionar médico", MEDICOS,
                            index=MEDICOS.index(st.session_state.medico_sel)
@@ -1608,7 +1653,10 @@ def main():
         for secao, itens in ESTRUTURA_DROPDOWNS.items():
             st.markdown(f'<div class="sec-header">{secao}</div>', unsafe_allow_html=True)
             for nome, opcoes in itens.items():
-                st.selectbox(nome, opcoes, key=f"estr_{secao}_{nome}")
+                if secao in ("VALVA AORTA", "VALVA MITRAL", "VALVA TRICÚSPIDE", "VALVA PULMONAR") and nome == "Geral":
+                    st.multiselect(nome, opcoes, key=f"estr_{secao}_{nome}")
+                else:
+                    st.selectbox(nome, opcoes, key=f"estr_{secao}_{nome}")
 
 
     with tab_wmsi:
@@ -1645,19 +1693,42 @@ def main():
                     st.session_state[f"wmsi_seg_{i}"] = "2 - Hipocinético"
                 st.rerun()
 
-        for i in range(1, 18):
-            wkey = f"wmsi_seg_{i}"
-            atual = int(sc.get(str(i), 1)) - 1
-            col_idx = (i - 1) % 6
-            if col_idx == 0:
-                cols = st.columns([2,1,2,1,2,1])
-            with cols[(col_idx % 3)*2]:
-                st.markdown(f"<span style='font-size:12px'>{i}. {NOMES_SEG[i-1]}</span>",
-                            unsafe_allow_html=True)
-            with cols[(col_idx % 3)*2+1]:
-                novo = st.selectbox(f"Segmento {i}", OPCOES, index=atual,
-                                    key=wkey, label_visibility="collapsed")
-                st.session_state.wmsi_scores[str(i)] = int(novo[0])
+        # Layout em grade (Grid) semelhante ao wall_motion.md
+        col_lbl, col_bas, col_med, col_api = st.columns([1.5, 2, 2, 2])
+        col_lbl.markdown("")
+        col_bas.markdown("**Basal**")
+        col_med.markdown("**Medio**")
+        col_api.markdown("**Apical**")
+
+        def draw_row(label, seg_basal, seg_medio, seg_apical):
+            c0, c1, c2, c3 = st.columns([1.5, 2, 2, 2])
+            c0.markdown(f"<div style='margin-top:8px; font-weight:600; font-size:14px'>{label}</div>", unsafe_allow_html=True)
+            
+            def render_cell(c, seg_id):
+                if seg_id is None:
+                    return
+                wkey = f"wmsi_seg_{seg_id}"
+                atual = int(sc.get(str(seg_id), 1)) - 1
+                with c:
+                    novo = st.selectbox(
+                        f"Seg {seg_id}", OPCOES, index=atual,
+                        key=wkey, label_visibility="collapsed"
+                    )
+                    st.session_state.wmsi_scores[str(seg_id)] = int(novo[0])
+                    st.markdown(f"<div style='font-size:11px; color:#888; margin-top:-10px; margin-bottom:8px'>{seg_id}. {NOMES_SEG[seg_id-1]}</div>", unsafe_allow_html=True)
+
+            render_cell(c1, seg_basal)
+            render_cell(c2, seg_medio)
+            render_cell(c3, seg_apical)
+
+        draw_row("Anterior",       1, 7, 13)
+        draw_row("Antero-septal",  2, 8, 14)
+        draw_row("Infero-septal",  3, 9, None)
+        draw_row("Inferior",       4, 10, 15)
+        draw_row("Infero-lateral", 5, 11, None)
+        draw_row("Antero-lateral", 6, 12, None)
+        draw_row("Parede lateral", None, None, 16)
+        draw_row("Apex",           None, None, 17)
 
         wmsi_val = sum(int(v) for v in st.session_state.wmsi_scores.values()) / 17
         st.markdown(f"### WMSI = {wmsi_val:.2f}")

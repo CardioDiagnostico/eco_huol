@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        svg {
+            cursor: pointer;
+        }
+
+        path:hover {
+            opacity: 0.8;
+            stroke-width: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script>
+        function sendMessageToStreamlitClient(type, data) {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: type,
+                ...data
+            }, "*");
+        }
+
+        function init() {
+            sendMessageToStreamlitClient("streamlit:componentReady", { apiVersion: 1 });
+        }
+
+        function setFrameHeight(height) {
+            sendMessageToStreamlitClient("setFrameHeight", { height: height });
+        }
+
+        function sendValue(value) {
+            sendMessageToStreamlitClient("setComponentValue", { value: value });
+        }
+
+        window.addEventListener("message", function (event) {
+            if (event.data.type === "streamlit:render") {
+                document.getElementById("root").innerHTML = event.data.args.svg;
+                setFrameHeight(document.documentElement.scrollHeight || document.body.scrollHeight);
+            }
+        });
+
+        window.onload = function () {
+            init();
+        };
+
+        // Send object with timestamp to guarantee state change on every click
+        window.clickSegment = function (seg) {
+            sendValue({ seg: seg, t: Date.now() });
+        };
+    </script>
+</body>
+
+</html>
