@@ -987,13 +987,21 @@ def gerar_laudo(valores, sexo, estruturado=None, wmsi_scores=None):
 
     # ── PERICÁRDIO ───────────────────────────────────────────────────
     peric = get_est("PERICÁRDIO", "Geral")
-    peric_txt = "Textura e deslizamento normais do pericárdico" if peric == "Normal" \
-                else peric
+    if isinstance(peric, list):
+        peric_txt = "Textura e deslizamento normais do pericárdico" if not peric or "Normal" in peric \
+                    else ", ".join(peric)
+    else:
+        peric_txt = "Textura e deslizamento normais do pericárdico" if peric == "Normal" \
+                    else peric
 
     # ── CONGÊNITAS ───────────────────────────────────────────────────
     congenita = get_est("CONGÊNITAS", "Geral")
-    cong_txt  = "Situs solitus, levocardia. Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial. Septos íntegros. Canal arterial não visualizado" \
-                if congenita == "Ausente" else f"Presença de {congenita}"
+    cong_str = "Situs solitus, levocardia. Concordâncias veno-atrial, átrio-ventricular e ventrículo-arterial. Septos íntegros. Canal arterial não visualizado"
+    if isinstance(congenita, list):
+        cong_txt = cong_str if not congenita or "Ausente" in congenita \
+                   else f"Presença de {', '.join(congenita)}"
+    else:
+        cong_txt  = cong_str if congenita == "Ausente" else f"Presença de {congenita}"
 
     # ── LINHAS OPCIONAIS VD ──────────────────────────────────────────
     vd_extra = [vd_fsist_txt]
@@ -1062,7 +1070,7 @@ def exportar_csv_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None):
     w(); w(SEP_H)
     return buf.getvalue().encode("utf-8-sig")
 
-def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None):
+def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None, eco_estresse=None):
     thin  = Side(style="thin", color="CCCCCC")
     BRD   = Border(left=thin, right=thin, top=thin, bottom=thin)
     CTR   = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -1276,6 +1284,49 @@ def exportar_excel_bytes(paciente, valores, sexo, estruturado, wmsi_scores=None)
         else:                  interp = "Disfunção importante"
         ws3.cell(row=19, column=3, value=interp).font = Font(name="Calibri", bold=True, size=11)
         ws3.freeze_panes = "A2"
+
+    # ── Aba 4: Eco Estresse ───────────────────────────────────────────
+    if eco_estresse:
+        ws4 = wb.create_sheet("Eco Estresse")
+        ws4.cell(row=1, column=1, value="Campo").font = H_FONT
+        ws4.cell(row=1, column=1).fill = H_FILL; ws4.cell(row=1, column=1).border = BRD
+        ws4.cell(row=1, column=2, value="Valor").font = H_FONT
+        ws4.cell(row=1, column=2).fill = H_FILL; ws4.cell(row=1, column=2).border = BRD
+        
+        ws4.column_dimensions["A"].width = 25
+        ws4.column_dimensions["B"].width = 60
+        
+        row_ee = 2
+        for k, v in eco_estresse.items():
+            if k in ["Dose", "Atropina", "PAs", "PAd", "FC"]:
+                continue
+            ws4.cell(row=row_ee, column=1, value=k).font = Font(name="Calibri", bold=True)
+            ws4.cell(row=row_ee, column=1).border = BRD
+            ws4.cell(row=row_ee, column=2, value=str(v)).font = D_FONT
+            ws4.cell(row=row_ee, column=2).border = BRD
+            row_ee += 1
+            
+        row_ee += 1
+        ws4.cell(row=row_ee, column=1, value="Tabela Protocolo").font = Font(name="Calibri", bold=True)
+        row_ee += 1
+        
+        estagios = ["Repouso", "0-3", "3-6", "6-9", "9-12", "12-15", "Recup."]
+        ws4.cell(row=row_ee, column=1, value="Parâmetro").font = S_FONT
+        ws4.cell(row=row_ee, column=1).fill = S_FILL; ws4.cell(row=row_ee, column=1).border = BRD
+        for c, e in enumerate(estagios, 2):
+            ws4.cell(row=row_ee, column=c, value=e).font = S_FONT
+            ws4.cell(row=row_ee, column=c).fill = S_FILL; ws4.cell(row=row_ee, column=c).border = BRD
+            ws4.column_dimensions[get_column_letter(c)].width = 12
+        row_ee += 1
+        
+        for k in ["Dose", "Atropina", "PAs", "PAd", "FC"]:
+            ws4.cell(row=row_ee, column=1, value=k).font = Font(name="Calibri", bold=True)
+            ws4.cell(row=row_ee, column=1).border = BRD
+            for c, e in enumerate(estagios, 2):
+                val = eco_estresse.get(k, {}).get(e, "")
+                ws4.cell(row=row_ee, column=c, value=str(val)).font = D_FONT
+                ws4.cell(row=row_ee, column=c).border = BRD
+            row_ee += 1
 
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
     return buf.read()
@@ -1653,7 +1704,7 @@ def main():
         for secao, itens in ESTRUTURA_DROPDOWNS.items():
             st.markdown(f'<div class="sec-header">{secao}</div>', unsafe_allow_html=True)
             for nome, opcoes in itens.items():
-                if secao in ("VALVA AORTA", "VALVA MITRAL", "VALVA TRICÚSPIDE", "VALVA PULMONAR") and nome == "Geral":
+                if secao in ("VALVA AORTA", "VALVA MITRAL", "VALVA TRICÚSPIDE", "VALVA PULMONAR", "CONGÊNITAS", "PERICÁRDIO") and nome == "Geral":
                     st.multiselect(nome, opcoes, key=f"estr_{secao}_{nome}")
                 else:
                     st.selectbox(nome, opcoes, key=f"estr_{secao}_{nome}")
@@ -2158,8 +2209,9 @@ def main():
 
     with col_xls:
         if tem_dados:
+            eco_est = st.session_state.get("eco_estresse")
             st.download_button("📊 Baixar Excel",
-                data=exportar_excel_bytes(pac, valores_exibir, sexo, estruturado_atual, st.session_state.wmsi_scores),
+                data=exportar_excel_bytes(pac, valores_exibir, sexo, estruturado_atual, st.session_state.wmsi_scores, eco_est),
                 file_name=f"eco_{nome_pac}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True)
